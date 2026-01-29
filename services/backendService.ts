@@ -9,6 +9,11 @@ const BACKEND_CONFIG = {
   type: 'mongodb' // 'file' or 'mongodb'
 };
 
+// Security warning for production
+if (import.meta.env.PROD && import.meta.env.VITE_ADMIN_KEY) {
+  console.warn('⚠️ SECURITY WARNING: Admin key exposed in production build. This is not secure for public applications.');
+}
+
 export interface BackendSession {
   id: string;
   timestamp: number;
