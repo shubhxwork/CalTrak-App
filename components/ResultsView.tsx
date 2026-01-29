@@ -65,8 +65,11 @@ const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) =
         <h2 className="text-5xl md:text-7xl font-robust italic text-white uppercase tracking-tighter">{inputs.name}</h2>
         <div className="mt-8">
           <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Daily Energy Budget</span>
-          <div className="text-8xl md:text-9xl font-robust italic leading-none text-white tabular-nums relative inline-block">
-            {displayCals.toLocaleString()} <span className="absolute -top-4 -right-12 text-2xl md:text-3xl text-[#FC4C02]">KCAL</span>
+          <div className="flex items-start justify-center gap-2 md:gap-4">
+            <div className="text-8xl md:text-9xl font-robust italic leading-none text-white tabular-nums">
+              {displayCals.toLocaleString()}
+            </div>
+            <span className="text-2xl md:text-3xl text-[#FC4C02] font-robust italic mt-2 md:mt-4">KCAL</span>
           </div>
         </div>
         <div className="flex flex-wrap justify-center gap-3 mt-10">

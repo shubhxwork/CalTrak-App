@@ -116,7 +116,7 @@ export const Insights: React.FC<InsightsProps> = ({ results }) => {
         <HudCard label="Algorithm Metadata" headerRight={<i className="fa-solid fa-flask-vial text-[#FC4C02] text-xs"></i>}>
           <div className="space-y-4">
             <MetricRow label="Calculation Engine" value={results?.formulaUsed || 'Katch-McArdle'} />
-            <MetricRow label="Baseline BMR" value={`${results?.bmr || '0'} kcal`} />
+            <MetricRow label="Baseline BMR" value={`${results?.bmr || '0'} KCAL`} />
             <MetricRow label="Energy Multiplier" value={`x${energyFactor}`} highlight />
             <MetricRow label="Data Integrity" value={results ? "Verified (P=0.05)" : "Standby"} />
             <div className="pt-2">
