@@ -117,7 +117,7 @@ const App: React.FC = () => {
           <button
             onClick={() => setShowDataPanel(true)}
             className="w-8 h-8 rounded-full bg-zinc-800/50 hover:bg-zinc-700 flex items-center justify-center transition-colors opacity-30 hover:opacity-100"
-            title="Data Analytics (Ctrl+Shift+D)"
+            title="Data Analytics (Cmd+Shift+D on Mac, Ctrl+Shift+D on Windows)"
           >
             <i className="fa-solid fa-chart-line text-xs text-zinc-400"></i>
           </button>

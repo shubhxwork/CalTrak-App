@@ -39,6 +39,7 @@ if (typeof window.CalTrakSheets === 'undefined') {
   console.log('- window.CalTrakSheets.updateConfig(url, enabled)');
   console.log('- window.CalTrakSheets.testConnection()');
   console.log('');
+  console.log('⌨️  Keyboard Shortcut: Cmd+Shift+D (Mac) or Ctrl+Shift+D (Windows)');
   console.log('📖 For detailed setup instructions, see GOOGLE_SHEETS_SETUP.md');
 }
 

@@ -33,6 +33,14 @@ This guide will help you set up automatic data collection to Google Sheets for C
 
 ## Step 4: Configure CalTrak
 
+**Option 1: Using Data Panel (Recommended)**
+1. Open the CalTrak app
+2. Press `Cmd+Shift+D` (Mac) or `Ctrl+Shift+D` (Windows) to open the data panel
+3. Click on the "Google Sheets" tab
+4. Click "Configure" and enter your web app URL
+5. Click "Test" to verify the connection
+
+**Option 2: Using Browser Console**
 1. Open your browser's developer console on the CalTrak app
 2. Run this command with your web app URL:
    ```javascript
@@ -41,6 +49,10 @@ This guide will help you set up automatic data collection to Google Sheets for C
 
 ## Step 5: Test the Integration
 
+**Using Data Panel:**
+- Click "Test" button in the Google Sheets tab
+
+**Using Console:**
 1. Test the connection:
    ```javascript
    window.CalTrakSheets.testConnection();
