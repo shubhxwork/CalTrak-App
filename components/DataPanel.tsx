@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DataService, UserSession } from '../services/dataService';
 import { GoogleSheetsService } from '../services/googleSheetsService';
+import { BackendService, BackendSession, BackendAnalytics } from '../services/backendService';
 import { AuthService } from '../services/authService';
 import { HudCard } from './ui/HudCard';
 import { MetricRow } from './ui/MetricRow';
@@ -12,15 +13,36 @@ interface DataPanelProps {
 export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
-  const [activeView, setActiveView] = useState<'analytics' | 'sessions' | 'export' | 'sheets'>('analytics');
+  const [activeView, setActiveView] = useState<'worldwide' | 'analytics' | 'sessions' | 'export' | 'sheets'>('worldwide');
   const [sheetsConfig, setSheetsConfig] = useState<any>(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [worldwideData, setWorldwideData] = useState<BackendSession[]>([]);
+  const [worldwideAnalytics, setWorldwideAnalytics] = useState<BackendAnalytics | null>(null);
+  const [loadingWorldwide, setLoadingWorldwide] = useState(false);
 
   useEffect(() => {
     setSessions(DataService.getUserSessions());
     setAnalytics(DataService.getUserAnalytics());
     setSheetsConfig((window as any).CalTrakSheets?.getConfig());
+    
+    // Load worldwide data
+    loadWorldwideData();
   }, []);
+
+  const loadWorldwideData = async () => {
+    setLoadingWorldwide(true);
+    try {
+      const [sessions, analytics] = await Promise.all([
+        BackendService.getAllSessions(),
+        BackendService.getAnalytics()
+      ]);
+      setWorldwideData(sessions);
+      setWorldwideAnalytics(analytics);
+    } catch (error) {
+      console.error('Failed to load worldwide data:', error);
+    }
+    setLoadingWorldwide(false);
+  };
 
   const handleExport = () => {
     const data = DataService.exportUserData();
@@ -106,8 +128,9 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
         {/* Navigation */}
         <div className="flex border-b border-zinc-800">
           {[
-            { key: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
-            { key: 'sessions', label: 'Sessions', icon: 'fa-list' },
+            { key: 'worldwide', label: 'Worldwide Data', icon: 'fa-globe' },
+            { key: 'analytics', label: 'Local Analytics', icon: 'fa-chart-line' },
+            { key: 'sessions', label: 'Local Sessions', icon: 'fa-list' },
             { key: 'sheets', label: 'Google Sheets', icon: 'fa-table' },
             { key: 'export', label: 'Export', icon: 'fa-download' }
           ].map((tab) => (
@@ -128,6 +151,126 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
 
         {/* Content */}
         <div className="p-6">
+          {activeView === 'worldwide' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-robust italic text-white uppercase">🌍 Worldwide User Data</h3>
+                <button
+                  onClick={loadWorldwideData}
+                  disabled={loadingWorldwide}
+                  className="px-4 py-2 bg-[#FC4C02] text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-[#FC4C02]/80 transition-colors disabled:opacity-50"
+                >
+                  <i className={`fa-solid ${loadingWorldwide ? 'fa-spinner fa-spin' : 'fa-refresh'} mr-2`}></i>
+                  Refresh
+                </button>
+              </div>
+
+              {worldwideAnalytics && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <HudCard label="Global Statistics">
+                    <div className="space-y-4">
+                      <MetricRow label="Total Users Worldwide" value={worldwideAnalytics.totalSessions.toString()} highlight />
+                      <MetricRow label="Unique Users" value={worldwideAnalytics.uniqueUsers.toString()} />
+                      <MetricRow label="Last 24 Hours" value={worldwideAnalytics.sessionsLast24h.toString()} />
+                    </div>
+                  </HudCard>
+                  
+                  <HudCard label="Popular Goals">
+                    <div className="space-y-2">
+                      {Object.entries(worldwideAnalytics.goalDistribution).map(([goal, count]) => (
+                        <div key={goal} className="flex justify-between text-sm">
+                          <span className="text-zinc-400 capitalize">{goal}</span>
+                          <span className="text-white font-bold">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </HudCard>
+                  
+                  <HudCard label="Demographics">
+                    <div className="space-y-4">
+                      <MetricRow label="Most Common Country" value={worldwideAnalytics.mostCommonCountry || 'Unknown'} />
+                      <MetricRow label="Avg Weight" value={`${worldwideAnalytics.averageWeight.toFixed(1)} kg`} />
+                      <MetricRow label="Avg Body Fat" value={`${worldwideAnalytics.averageBodyFat.toFixed(1)}%`} />
+                    </div>
+                  </HudCard>
+                  
+                  <HudCard label="Activity">
+                    <div className="space-y-4">
+                      <MetricRow label="Last 7 Days" value={worldwideAnalytics.sessionsLast7days.toString()} />
+                      <MetricRow label="Most Popular Goal" value={worldwideAnalytics.mostCommonGoal || 'N/A'} highlight />
+                    </div>
+                  </HudCard>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-robust italic text-white">Recent Worldwide Sessions</h4>
+                  <button
+                    onClick={() => BackendService.exportCSV()}
+                    className="px-4 py-2 bg-green-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-green-700 transition-colors"
+                  >
+                    <i className="fa-solid fa-download mr-2"></i>
+                    Export All Data
+                  </button>
+                </div>
+
+                {worldwideData.length > 0 ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {worldwideData.slice(-20).reverse().map((session, index) => (
+                      <HudCard key={session.id} className="p-4">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="text-lg font-robust italic text-white">{session.inputs.name}</h4>
+                            <p className="text-[10px] font-mono text-zinc-500 uppercase">
+                              {new Date(session.metadata.timestamp).toLocaleString()}
+                            </p>
+                            <p className="text-[10px] font-mono text-zinc-600">
+                              📍 {session.metadata.country} • {session.metadata.ip}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-robust italic text-[#FC4C02]">
+                              {session.results.calories} KCAL
+                            </div>
+                            <p className="text-[10px] font-mono text-zinc-500 uppercase">
+                              {session.inputs.goal}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                          <div>
+                            <span className="text-zinc-500">Weight:</span>
+                            <span className="text-white ml-2">{session.inputs.weight} {session.inputs.unitSystem === 'metric' ? 'kg' : 'lb'}</span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500">Body Fat:</span>
+                            <span className="text-white ml-2">{session.inputs.bodyFat}%</span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500">Activity:</span>
+                            <span className="text-white ml-2">{session.inputs.activityLevel}</span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500">BMR:</span>
+                            <span className="text-white ml-2">{session.results.bmr} kcal</span>
+                          </div>
+                        </div>
+                      </HudCard>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <i className="fa-solid fa-globe text-4xl text-zinc-600 mb-4"></i>
+                    <p className="text-zinc-500 font-mono text-sm">
+                      {loadingWorldwide ? 'Loading worldwide data...' : 'No worldwide data available yet'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeView === 'analytics' && (
             <div className="space-y-6">
               {analytics ? (

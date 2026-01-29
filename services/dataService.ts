@@ -1,5 +1,6 @@
 import { UserInputs, CalculationResults } from '../types';
 import { GoogleSheetsService } from './googleSheetsService';
+import { BackendService } from './backendService';
 
 export interface UserSession {
   id: string;
@@ -41,6 +42,19 @@ export class DataService {
 
     this.saveUserData(userData);
     
+    // Save to backend (worldwide data collection)
+    BackendService.saveSession(inputs, results)
+      .then(backendSessionId => {
+        if (backendSessionId) {
+          console.log('🌍 Data saved to worldwide backend:', backendSessionId);
+        } else {
+          console.log('⚠️ Backend save failed, but local data is saved');
+        }
+      })
+      .catch(error => {
+        console.error('❌ Backend error:', error);
+      });
+    
     // Save to Google Sheets asynchronously (don't block the UI)
     GoogleSheetsService.saveToGoogleSheets(inputs, results, sessionId)
       .then(success => {
@@ -61,6 +75,7 @@ export class DataService {
       goal: inputs.goal,
       calories: results.calories,
       timestamp: new Date(session.timestamp).toISOString(),
+      backendEnabled: true,
       googleSheetsEnabled: true
     });
 
