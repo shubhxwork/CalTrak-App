@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { DataService, UserSession } from '../services/dataService';
-import { GoogleSheetsService } from '../services/googleSheetsService';
 import { BackendService, BackendSession, BackendAnalytics } from '../services/backendService';
 import { AuthService } from '../services/authService';
 import { HudCard } from './ui/HudCard';
@@ -11,21 +9,16 @@ interface DataPanelProps {
 }
 
 export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
-  const [sessions, setSessions] = useState<UserSession[]>([]);
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [activeView, setActiveView] = useState<'worldwide' | 'analytics' | 'sessions' | 'export' | 'sheets'>('worldwide');
-  const [sheetsConfig, setSheetsConfig] = useState<any>(null);
+  const [activeView, setActiveView] = useState<'worldwide' | 'sheets'>('worldwide');
   const [testingConnection, setTestingConnection] = useState(false);
   const [worldwideData, setWorldwideData] = useState<BackendSession[]>([]);
   const [worldwideAnalytics, setWorldwideAnalytics] = useState<BackendAnalytics | null>(null);
   const [loadingWorldwide, setLoadingWorldwide] = useState(false);
+  const [loadingExport, setLoadingExport] = useState(false);
+  const [exportStatus, setExportStatus] = useState<{type: 'success' | 'error', message: string, details?: string} | null>(null);
 
   useEffect(() => {
-    setSessions(DataService.getUserSessions());
-    setAnalytics(DataService.getUserAnalytics());
-    setSheetsConfig((window as any).CalTrakSheets?.getConfig());
-    
-    // Load worldwide data
+    // Load worldwide data on component mount
     loadWorldwideData();
   }, []);
 
@@ -44,45 +37,123 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
     setLoadingWorldwide(false);
   };
 
-  const handleExport = () => {
-    const data = DataService.exportUserData();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `caltrak-data-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  const handleExportToSheets = async () => {
+    setLoadingExport(true);
+    setExportStatus(null);
+    
+    try {
+      console.log('🚀 Starting worldwide data export to CSV...');
+      
+      // Get all worldwide data
+      const [sessionsResponse, analytics] = await Promise.all([
+        BackendService.getAllSessions(1, 1000), // Get more sessions for export
+        BackendService.getAnalytics()
+      ]);
+      
+      const sessions = sessionsResponse.sessions || [];
+      
+      if (sessions.length === 0) {
+        setExportStatus({
+          type: 'error',
+          message: 'No worldwide data available to export',
+          details: 'Make sure users have used the calculator and data is being saved to the backend.'
+        });
+        return;
+      }
 
-  const handleClearData = () => {
-    if (window.confirm('Are you sure you want to clear all user data? This cannot be undone.')) {
-      DataService.clearUserData();
-      setSessions([]);
-      setAnalytics(null);
+      // Create CSV headers
+      const headers = [
+        'Timestamp', 'Session ID', 'Name', 'Age', 'Gender', 'Weight', 'Height',
+        'Body Fat %', 'Unit System', 'Activity Level', 'Goal', 'Target Weight',
+        'Weekly Rate', 'Calories', 'Protein (g)', 'Protein %', 'Carbs (g)',
+        'Carbs %', 'Fat (g)', 'Fat %', 'Fiber (g)', 'Water (L)', 'LBM',
+        'BMR', 'TDEE', 'Formula Used', 'Expected Change', 'Safety Level',
+        'Months to Target', 'Milestone Count', 'Country', 'City', 'Device', 'Browser'
+      ];
+
+      // Create CSV rows
+      const rows = sessions.map(session => [
+        new Date(session.createdAt).toISOString(),
+        session.sessionId,
+        session.inputs.name,
+        session.inputs.age || '',
+        session.inputs.gender,
+        session.inputs.weight,
+        session.inputs.height || '',
+        session.inputs.bodyFat,
+        session.inputs.unitSystem,
+        session.inputs.activityLevel,
+        session.inputs.goal,
+        session.inputs.targetWeight || '',
+        session.inputs.weeklyRate || '',
+        session.results.calories,
+        session.results.proteinG,
+        session.results.proteinPct,
+        session.results.carbsG,
+        session.results.carbsPct,
+        session.results.fatG,
+        session.results.fatPct,
+        session.results.fiberG,
+        session.results.waterLiters,
+        session.results.lbm,
+        session.results.bmr,
+        session.results.tdee,
+        session.results.formulaUsed,
+        session.results.expectedWeightChange,
+        session.results.safetyLevel,
+        session.results.monthsToTarget || '',
+        session.results.milestones?.length || 0,
+        session.metadata.country,
+        session.metadata.city,
+        session.metadata.device,
+        session.metadata.browser
+      ]);
+
+      // Convert to CSV
+      const csv = [headers, ...rows]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+
+      // Create and download file
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `caltrak-worldwide-data-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setExportStatus({
+        type: 'success',
+        message: `Successfully exported ${sessions.length} worldwide users to CSV`,
+        details: 'File downloaded! Import this CSV into Google Sheets to analyze your worldwide CalTrak data.'
+      });
+
+      console.log('✅ Worldwide data export completed:', sessions.length, 'sessions');
+
+    } catch (error) {
+      console.error('❌ Export failed:', error);
+      setExportStatus({
+        type: 'error',
+        message: 'Export failed',
+        details: error instanceof Error ? error.message : 'Unknown error occurred during export'
+      });
+    } finally {
+      setLoadingExport(false);
     }
   };
 
   const handleTestConnection = async () => {
     setTestingConnection(true);
     try {
-      const success = await GoogleSheetsService.testConnection();
-      alert(success ? 'Connection test sent! Check your Google Sheet.' : 'Connection test failed. Check console for details.');
+      const success = await BackendService.testConnection();
+      alert(success ? 'Backend connection successful!' : 'Backend connection failed. Check console for details.');
     } catch (error) {
       alert('Connection test failed: ' + error);
     }
     setTestingConnection(false);
-  };
-
-  const handleUpdateSheetsUrl = () => {
-    const url = prompt('Enter your Google Apps Script web app URL:', sheetsConfig?.scriptUrl || '');
-    if (url) {
-      GoogleSheetsService.updateConfig(url, true);
-      setSheetsConfig((window as any).CalTrakSheets?.getConfig());
-      alert('Google Sheets URL updated! Test the connection to verify it works.');
-    }
   };
 
   return (
@@ -129,10 +200,7 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
         <div className="flex border-b border-zinc-800">
           {[
             { key: 'worldwide', label: 'Worldwide Data', icon: 'fa-globe' },
-            { key: 'analytics', label: 'Local Analytics', icon: 'fa-chart-line' },
-            { key: 'sessions', label: 'Local Sessions', icon: 'fa-list' },
-            { key: 'sheets', label: 'Google Sheets', icon: 'fa-table' },
-            { key: 'export', label: 'Export', icon: 'fa-download' }
+            { key: 'sheets', label: 'Export to Sheets', icon: 'fa-table' }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -271,236 +339,104 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
             </div>
           )}
 
-          {activeView === 'analytics' && (
-            <div className="space-y-6">
-              {analytics ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <HudCard label="Usage Statistics">
-                    <div className="space-y-4">
-                      <MetricRow label="Total Sessions" value={analytics.totalSessions.toString()} />
-                      <MetricRow label="Unique Users" value={analytics.uniqueUsers.toString()} />
-                      <MetricRow label="Most Common Goal" value={analytics.mostCommonGoal || 'N/A'} highlight />
-                    </div>
-                  </HudCard>
-                  
-                  <HudCard label="User Averages">
-                    <div className="space-y-4">
-                      <MetricRow label="Avg Weight" value={`${analytics.averageWeight.toFixed(1)} kg`} />
-                      <MetricRow label="Avg Body Fat" value={`${analytics.averageBodyFat.toFixed(1)}%`} />
-                      <MetricRow label="Weight Trend" value={analytics.weightTrend} highlight />
-                    </div>
-                  </HudCard>
-                  
-                  <HudCard label="Timeline">
-                    <div className="space-y-4">
-                      <MetricRow label="First Session" value={new Date(analytics.firstSession).toLocaleDateString()} />
-                      <MetricRow label="Last Session" value={new Date(analytics.lastSession).toLocaleDateString()} />
-                      <MetricRow label="Body Fat Trend" value={analytics.bodyFatTrend} highlight />
-                    </div>
-                  </HudCard>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <i className="fa-solid fa-chart-line text-4xl text-zinc-600 mb-4"></i>
-                  <p className="text-zinc-500 font-mono text-sm">No data available yet</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeView === 'sessions' && (
-            <div className="space-y-4">
-              {sessions.length > 0 ? (
-                sessions.slice().reverse().map((session, index) => (
-                  <HudCard key={session.id} className="p-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h4 className="text-lg font-robust italic text-white">{session.inputs.name}</h4>
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase">
-                          {new Date(session.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-robust italic text-[#FC4C02]">
-                          {session.results.calories} KCAL
-                        </div>
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase">
-                          {session.inputs.goal}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <span className="text-zinc-500">Weight:</span>
-                        <span className="text-white ml-2">{session.inputs.weight} {session.inputs.unitSystem === 'metric' ? 'kg' : 'lb'}</span>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500">Body Fat:</span>
-                        <span className="text-white ml-2">{session.inputs.bodyFat}%</span>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500">Activity:</span>
-                        <span className="text-white ml-2">{session.inputs.activityLevel}</span>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500">BMR:</span>
-                        <span className="text-white ml-2">{session.results.bmr} kcal</span>
-                      </div>
-                    </div>
-                  </HudCard>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <i className="fa-solid fa-list text-4xl text-zinc-600 mb-4"></i>
-                  <p className="text-zinc-500 font-mono text-sm">No sessions recorded yet</p>
-                </div>
-              )}
-            </div>
-          )}
-
           {activeView === 'sheets' && (
             <div className="space-y-6">
-              <HudCard label="Google Sheets Integration">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-robust italic text-white uppercase">📊 Export Worldwide Data to Google Sheets</h3>
+                <button
+                  onClick={handleExportToSheets}
+                  disabled={loadingExport}
+                  className="px-6 py-3 bg-[#0F9D58] text-white font-black text-sm uppercase tracking-widest rounded-full hover:bg-[#0F9D58]/80 transition-colors disabled:opacity-50"
+                >
+                  <i className={`fa-solid ${loadingExport ? 'fa-spinner fa-spin' : 'fa-download'} mr-2`}></i>
+                  {loadingExport ? 'Exporting...' : 'Export to Sheets'}
+                </button>
+              </div>
+
+              <HudCard label="Worldwide Data Export">
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
-                    <div>
-                      <h4 className="text-lg font-robust italic text-white mb-1">Status</h4>
-                      <p className="text-sm text-zinc-400">
-                        {sheetsConfig?.enabled && sheetsConfig?.scriptUrl !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE' 
-                          ? '✅ Configured and Active' 
-                          : '⚠️ Not Configured'}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={handleUpdateSheetsUrl}
-                        className="px-4 py-2 bg-[#FC4C02] text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-[#FC4C02]/80 transition-colors"
-                      >
-                        <i className="fa-solid fa-cog mr-2"></i>
-                        Configure
-                      </button>
-                      <button 
-                        onClick={handleTestConnection}
-                        disabled={testingConnection}
-                        className="px-4 py-2 bg-green-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
-                      >
-                        <i className={`fa-solid ${testingConnection ? 'fa-spinner fa-spin' : 'fa-plug'} mr-2`}></i>
-                        Test
-                      </button>
+                  <div className="bg-zinc-800 p-4 rounded-lg">
+                    <h4 className="text-lg font-robust italic text-white mb-3">Export Summary</h4>
+                    {worldwideAnalytics && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-zinc-500">Total Users:</span>
+                          <span className="text-white ml-2 font-bold">{worldwideAnalytics.totalSessions}</span>
+                        </div>
+                        <div>
+                          <span className="text-zinc-500">Unique Users:</span>
+                          <span className="text-white ml-2 font-bold">{worldwideAnalytics.uniqueUsers}</span>
+                        </div>
+                        <div>
+                          <span className="text-zinc-500">Countries:</span>
+                          <span className="text-white ml-2 font-bold">{Object.keys(worldwideAnalytics.countryDistribution || {}).length}</span>
+                        </div>
+                        <div>
+                          <span className="text-zinc-500">Goals:</span>
+                          <span className="text-white ml-2 font-bold">{Object.keys(worldwideAnalytics.goalDistribution || {}).length}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-zinc-800 p-4 rounded-lg">
+                    <h4 className="text-lg font-robust italic text-white mb-3">Export Options</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-zinc-900 rounded border-l-4 border-[#0F9D58]">
+                        <div>
+                          <h5 className="text-white font-bold">📊 Complete Dataset</h5>
+                          <p className="text-zinc-400 text-sm">All worldwide user data with full calculations and demographics</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[#0F9D58] font-bold">CSV Format</div>
+                          <div className="text-zinc-500 text-xs">Ready for Sheets import</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 bg-zinc-900 rounded border-l-4 border-blue-500">
+                        <div>
+                          <h5 className="text-white font-bold">📈 Analytics Summary</h5>
+                          <p className="text-zinc-400 text-sm">Goal distribution, demographics, and trends overview</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-blue-400 font-bold">Included</div>
+                          <div className="text-zinc-500 text-xs">With main export</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <div className="bg-zinc-800 p-4 rounded-lg">
-                    <h4 className="text-lg font-robust italic text-white mb-3">Setup Instructions</h4>
+                    <h4 className="text-lg font-robust italic text-white mb-3">How It Works</h4>
                     <div className="space-y-2 text-sm text-zinc-300">
-                      <p>1. Create a Google Sheet for your data</p>
-                      <p>2. Set up Google Apps Script with the provided code</p>
-                      <p>3. Deploy as web app with "Anyone" access</p>
-                      <p>4. Configure the web app URL using the button above</p>
-                      <p>5. Test the connection to verify it works</p>
+                      <p>1. Click "Export to Sheets" to download worldwide data as CSV</p>
+                      <p>2. Open Google Sheets and create a new spreadsheet</p>
+                      <p>3. Go to File → Import → Upload → Select the downloaded CSV</p>
+                      <p>4. Choose "Replace spreadsheet" and click "Import data"</p>
+                      <p>5. Your worldwide CalTrak data is now in Google Sheets!</p>
                     </div>
                     <div className="mt-4 p-3 bg-zinc-900 rounded border-l-4 border-[#FC4C02]">
                       <p className="text-xs text-zinc-400">
-                        📖 See <code>GOOGLE_SHEETS_SETUP.md</code> for detailed instructions
+                        💡 <strong>Pro Tip:</strong> Set up automatic refresh by re-exporting periodically to keep your Sheets data current with new worldwide users.
                       </p>
                     </div>
                   </div>
 
-                  {sheetsConfig?.scriptUrl && sheetsConfig.scriptUrl !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE' && (
-                    <div className="bg-zinc-800 p-4 rounded-lg">
-                      <h4 className="text-lg font-robust italic text-white mb-2">Current Configuration</h4>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-zinc-500">URL:</span>
-                          <span className="text-zinc-300 ml-2 font-mono text-xs break-all">
-                            {sheetsConfig.scriptUrl}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-zinc-500">Status:</span>
-                          <span className={`ml-2 ${sheetsConfig.enabled ? 'text-green-400' : 'text-red-400'}`}>
-                            {sheetsConfig.enabled ? 'Enabled' : 'Disabled'}
-                          </span>
-                        </div>
+                  {exportStatus && (
+                    <div className={`p-4 rounded-lg border-l-4 ${
+                      exportStatus.type === 'success' 
+                        ? 'bg-green-900/20 border-green-500 text-green-400' 
+                        : 'bg-red-900/20 border-red-500 text-red-400'
+                    }`}>
+                      <div className="flex items-center">
+                        <i className={`fa-solid ${exportStatus.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'} mr-2`}></i>
+                        <span className="font-bold">{exportStatus.message}</span>
                       </div>
+                      {exportStatus.details && (
+                        <p className="text-sm mt-1 opacity-80">{exportStatus.details}</p>
+                      )}
                     </div>
                   )}
-
-                  <div className="bg-zinc-800 p-4 rounded-lg">
-                    <h4 className="text-lg font-robust italic text-white mb-3">Debug Information</h4>
-                    <button
-                      onClick={() => {
-                        const debugInfo = (window as any).CalTrakSheets?.getDebugInfo();
-                        if (debugInfo) {
-                          alert(`Last Status: ${debugInfo.status}\nTime: ${debugInfo.lastSent || debugInfo.lastError}\nSession: ${debugInfo.sessionId}\nUser: ${debugInfo.userName || 'N/A'}\nError: ${debugInfo.error || 'None'}`);
-                        } else {
-                          alert('No debug information available. Try using the calculator first.');
-                        }
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-blue-700 transition-colors mr-2"
-                    >
-                      <i className="fa-solid fa-bug mr-2"></i>
-                      Show Debug Info
-                    </button>
-                    <button
-                      onClick={() => {
-                        (window as any).CalTrakSheets?.clearDebugInfo();
-                        alert('Debug information cleared.');
-                      }}
-                      className="px-4 py-2 bg-gray-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-gray-700 transition-colors"
-                    >
-                      <i className="fa-solid fa-trash mr-2"></i>
-                      Clear Debug
-                    </button>
-                  </div>
-                </div>
-              </HudCard>
-            </div>
-          )}
-
-          {activeView === 'export' && (
-            <div className="space-y-6">
-              <HudCard label="Data Management">
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-robust italic text-white mb-2">Export Data</h4>
-                    <p className="text-sm text-zinc-400 mb-4">
-                      Download all user data as JSON file for backup or analysis.
-                    </p>
-                    <button 
-                      onClick={handleExport}
-                      className="px-6 py-3 bg-[#FC4C02] text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-[#FC4C02]/80 transition-colors"
-                    >
-                      <i className="fa-solid fa-download mr-2"></i>
-                      Export JSON
-                    </button>
-                  </div>
-                  
-                  <div className="border-t border-zinc-800 pt-6">
-                    <h4 className="text-lg font-robust italic text-red-400 mb-2">Clear Data</h4>
-                    <p className="text-sm text-zinc-400 mb-4">
-                      Permanently delete all stored user data. This action cannot be undone.
-                    </p>
-                    <button 
-                      onClick={handleClearData}
-                      className="px-6 py-3 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-red-700 transition-colors"
-                    >
-                      <i className="fa-solid fa-trash mr-2"></i>
-                      Clear All Data
-                    </button>
-                  </div>
-                </div>
-              </HudCard>
-
-              <HudCard label="Developer Console Access">
-                <div className="bg-zinc-800 p-4 rounded-lg font-mono text-sm">
-                  <p className="text-zinc-400 mb-2">Access data programmatically via browser console:</p>
-                  <div className="space-y-1 text-[#FC4C02]">
-                    <div>window.CalTrakData.analytics()</div>
-                    <div>window.CalTrakData.sessions()</div>
-                    <div>window.CalTrakData.export()</div>
-                    <div>window.CalTrakData.clear()</div>
-                  </div>
                 </div>
               </HudCard>
             </div>
