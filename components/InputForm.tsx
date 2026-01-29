@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { UserInputs, UnitSystem, Gender, ActivityLevel, Goal } from '../types';
 import { ACTIVITY_DESCRIPTIONS } from '../constants';
 import { HudCard } from './ui/HudCard';
@@ -84,20 +84,23 @@ const IntensitySafetyMeter = ({ goal, rate, weight }: { goal: 'cut' | 'bulk'; ra
   );
 };
 
-const InputGroup = ({ label, value, unit, onChange, min, max, step, subLabel }: any) => (
+const InputGroup = ({ label, value, unit, onChange, min, max, step, subLabel, inputRef, isRequired, hasError }: any) => (
   <div className="space-y-4">
     <div className="flex justify-between items-end">
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-mono text-zinc-500 uppercase">{label}</label>
+        <label className={`text-[10px] font-mono uppercase ${hasError ? 'text-red-400' : 'text-zinc-500'}`}>
+          {label} {isRequired && <span className="text-red-400">*</span>}
+        </label>
         {subLabel && <span className="text-[8px] font-mono text-[#FC4C02] uppercase tracking-wider">{subLabel}</span>}
       </div>
       <div className="flex items-baseline gap-1">
         <input 
+          ref={inputRef}
           type="number" 
           value={value} 
           onChange={(e) => onChange(e.target.value)} 
           onWheel={(e) => e.currentTarget.blur()}
-          className="w-24 text-2xl font-robust bg-transparent outline-none text-white text-right" 
+          className={`w-24 text-2xl font-robust bg-transparent outline-none text-white text-right ${hasError ? 'border-b border-red-400' : ''}`}
         />
         <span className="text-sm font-robust text-[#FC4C02]">{unit}</span>
       </div>
@@ -118,6 +121,15 @@ const InputForm: React.FC<InputFormProps> = ({ onCalculate, isCalculating, initi
   const [goal, setGoal] = useState<Goal>(initialInputs?.goal || 'recomp');
   const [targetWeight, setTargetWeight] = useState(initialInputs?.targetWeight?.toString() || '');
   const [weeklyRate, setWeeklyRate] = useState<number>(initialInputs?.weeklyRate || (goal === 'bulk' ? 0.2 : 0.5));
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Refs for scrolling to missing fields
+  const nameRef = useRef<HTMLInputElement>(null);
+  const weightRef = useRef<HTMLInputElement>(null);
+  const bodyFatRef = useRef<HTMLInputElement>(null);
+  const ageRef = useRef<HTMLInputElement>(null);
+  const heightRef = useRef<HTMLInputElement>(null);
+  const targetWeightRef = useRef<HTMLInputElement>(null);
 
   const bfValue = parseFloat(bodyFat) || 0;
   const weightVal = parseFloat(weight) || 0;
@@ -147,6 +159,75 @@ const InputForm: React.FC<InputFormProps> = ({ onCalculate, isCalculating, initi
 
   const isValid = name.trim().length > 0 && weight !== '' && bodyFat !== '' && weightVal > 0 && heightVal > 0 && ageVal > 0;
 
+  const validateAndScrollToError = () => {
+    const errors: string[] = [];
+    let firstErrorRef: React.RefObject<HTMLInputElement> | null = null;
+
+    // Check required fields in order
+    if (name.trim().length === 0) {
+      errors.push('name');
+      if (!firstErrorRef) firstErrorRef = nameRef;
+    }
+    
+    if (weight === '' || weightVal <= 0) {
+      errors.push('weight');
+      if (!firstErrorRef) firstErrorRef = weightRef;
+    }
+    
+    if (bodyFat === '' || bfValue <= 0) {
+      errors.push('bodyFat');
+      if (!firstErrorRef) firstErrorRef = bodyFatRef;
+    }
+    
+    if (age === '' || ageVal <= 0) {
+      errors.push('age');
+      if (!firstErrorRef) firstErrorRef = ageRef;
+    }
+    
+    if (height === '' || heightVal <= 0) {
+      errors.push('height');
+      if (!firstErrorRef) firstErrorRef = heightRef;
+    }
+
+    // Check target weight for cut/bulk goals
+    if (goal !== 'recomp' && (targetWeight === '' || targetWeightVal <= 0)) {
+      errors.push('targetWeight');
+      if (!firstErrorRef) firstErrorRef = targetWeightRef;
+    }
+
+    setValidationErrors(errors);
+
+    // Scroll to first error field
+    if (firstErrorRef && firstErrorRef.current) {
+      firstErrorRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+      firstErrorRef.current.focus();
+      
+      // Add a subtle shake animation using CSS transforms
+      const element = firstErrorRef.current;
+      element.style.transform = 'translateX(0)';
+      element.style.transition = 'transform 0.1s ease-in-out';
+      
+      const shakeKeyframes = [0, -10, 10, -10, 10, -5, 5, 0];
+      let keyframeIndex = 0;
+      
+      const shakeInterval = setInterval(() => {
+        if (keyframeIndex < shakeKeyframes.length) {
+          element.style.transform = `translateX(${shakeKeyframes[keyframeIndex]}px)`;
+          keyframeIndex++;
+        } else {
+          clearInterval(shakeInterval);
+          element.style.transform = 'translateX(0)';
+          element.style.transition = '';
+        }
+      }, 50);
+    }
+
+    return errors.length === 0;
+  };
+
   const handleUnitToggle = (u: UnitSystem) => {
     if (u === unitSystem) return;
     setUnitSystem(u);
@@ -160,7 +241,15 @@ const InputForm: React.FC<InputFormProps> = ({ onCalculate, isCalculating, initi
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
+    
+    // Clear previous validation errors
+    setValidationErrors([]);
+    
+    // Validate and scroll to first error if any
+    if (!validateAndScrollToError()) {
+      return;
+    }
+    
     onCalculate({
       name: name.trim(), 
       unitSystem, 
@@ -184,7 +273,16 @@ const InputForm: React.FC<InputFormProps> = ({ onCalculate, isCalculating, initi
             <button key={u} type="button" onClick={() => handleUnitToggle(u as UnitSystem)} className={`px-6 py-2 text-[10px] font-black rounded-full transition-all uppercase tracking-[0.1em] ${unitSystem === u ? 'bg-white text-black' : 'text-zinc-500 hover:text-zinc-300'}`}>{u}</button>
           ))}
         </div>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="IDENTIFY OPERATOR" className="bg-transparent border-b border-zinc-800 focus:border-[#FC4C02] py-2 text-sm font-mono font-bold uppercase tracking-widest outline-none text-white text-right" />
+        <input 
+          ref={nameRef}
+          type="text" 
+          value={name} 
+          onChange={(e) => setName(e.target.value)} 
+          placeholder="IDENTIFY OPERATOR" 
+          className={`bg-transparent border-b focus:border-[#FC4C02] py-2 text-sm font-mono font-bold uppercase tracking-widest outline-none text-white text-right ${
+            validationErrors.includes('name') ? 'border-red-400' : 'border-zinc-800'
+          }`}
+        />
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -196,21 +294,55 @@ const InputForm: React.FC<InputFormProps> = ({ onCalculate, isCalculating, initi
               ))}
             </div>
             <PhysiqueHero bf={bfValue} gender={gender} />
-            <InputGroup label="Estimated Body Fat" unit="%" value={bodyFat} onChange={setBodyFat} min={5} max={99} step={0.5} />
+            <InputGroup 
+              label="Estimated Body Fat" 
+              unit="%" 
+              value={bodyFat} 
+              onChange={setBodyFat} 
+              min={5} 
+              max={99} 
+              step={0.5} 
+              inputRef={bodyFatRef}
+              isRequired={true}
+              hasError={validationErrors.includes('bodyFat')}
+            />
           </HudCard>
 
           <HudCard label="Anatomical Profile" variant="muted">
             <div className="space-y-10">
-              <InputGroup label={`Current Load (${unitSystem === 'metric' ? 'KG' : 'LB'})`} unit={unitSystem === 'metric' ? 'KG' : 'LB'} value={weight} onChange={setWeight} {...weightLimits} />
+              <InputGroup 
+                label={`Current Load (${unitSystem === 'metric' ? 'KG' : 'LB'})`} 
+                unit={unitSystem === 'metric' ? 'KG' : 'LB'} 
+                value={weight} 
+                onChange={setWeight} 
+                inputRef={weightRef}
+                isRequired={true}
+                hasError={validationErrors.includes('weight')}
+                {...weightLimits} 
+              />
               <InputGroup 
                 label={`Stature (${unitSystem === 'metric' ? 'CM' : 'TOTAL INCHES'})`} 
                 unit={unitSystem === 'metric' ? 'CM' : 'IN'} 
                 value={height} 
                 onChange={setHeight} 
                 subLabel={heightSubLabel}
+                inputRef={heightRef}
+                isRequired={true}
+                hasError={validationErrors.includes('height')}
                 {...heightLimits} 
               />
-              <InputGroup label="Chronological Age" unit="YRS" value={age} onChange={setAge} min={15} max={100} step={1} />
+              <InputGroup 
+                label="Chronological Age" 
+                unit="YRS" 
+                value={age} 
+                onChange={setAge} 
+                min={15} 
+                max={100} 
+                step={1} 
+                inputRef={ageRef}
+                isRequired={true}
+                hasError={validationErrors.includes('age')}
+              />
             </div>
           </HudCard>
         </div>
@@ -225,7 +357,16 @@ const InputForm: React.FC<InputFormProps> = ({ onCalculate, isCalculating, initi
 
             {goal !== 'recomp' && (
               <div className="space-y-8 pt-4">
-                <InputGroup label="Target Threshold" unit={unitSystem === 'metric' ? 'KG' : 'LB'} value={targetWeight} onChange={setTargetWeight} {...targetLimits} />
+                <InputGroup 
+                  label="Target Threshold" 
+                  unit={unitSystem === 'metric' ? 'KG' : 'LB'} 
+                  value={targetWeight} 
+                  onChange={setTargetWeight} 
+                  inputRef={targetWeightRef}
+                  isRequired={true}
+                  hasError={validationErrors.includes('targetWeight')}
+                  {...targetLimits} 
+                />
                 <div className="space-y-4">
                   <div className="flex justify-between text-[10px] font-mono text-zinc-500 uppercase">
                     <span>Intensity Level</span>
@@ -254,7 +395,7 @@ const InputForm: React.FC<InputFormProps> = ({ onCalculate, isCalculating, initi
             </select>
           </HudCard>
 
-          <button type="submit" disabled={!isValid || isCalculating} className={`w-full py-6 rounded-full text-xl font-robust tracking-widest uppercase transition-all flex items-center justify-center gap-3 ${!isValid || isCalculating ? 'bg-zinc-900 text-zinc-700' : 'bg-[#FC4C02] text-white shadow-[0_0_30px_rgba(252,76,2,0.2)] hover:shadow-[0_0_50px_rgba(252,76,2,0.4)] active:scale-[0.98]'}`}>
+          <button type="submit" disabled={isCalculating} className={`w-full py-6 rounded-full text-xl font-robust tracking-widest uppercase transition-all flex items-center justify-center gap-3 ${isCalculating ? 'bg-zinc-900 text-zinc-700' : 'bg-[#FC4C02] text-white shadow-[0_0_30px_rgba(252,76,2,0.2)] hover:shadow-[0_0_50px_rgba(252,76,2,0.4)] active:scale-[0.98]'}`}>
             {isCalculating ? 'INITIALIZING...' : 'COMPILE BLUEPRINT'} <i className="fa-solid fa-bolt-lightning"></i>
           </button>
         </div>

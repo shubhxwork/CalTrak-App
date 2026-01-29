@@ -254,7 +254,7 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                     </div>
                   </HudCard>
                   
-                  <HudCard label="Demographics">
+                  <HudCard label="Demographics & Location">
                     <div className="space-y-4">
                       <MetricRow label="Most Common Country" value={worldwideAnalytics.mostCommonCountry || 'Unknown'} />
                       <MetricRow label="Avg Weight" value={`${worldwideAnalytics.averageWeight.toFixed(1)} kg`} />
@@ -262,10 +262,18 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                     </div>
                   </HudCard>
                   
-                  <HudCard label="Activity">
-                    <div className="space-y-4">
-                      <MetricRow label="Last 7 Days" value={worldwideAnalytics.sessionsLast7days.toString()} />
-                      <MetricRow label="Most Popular Goal" value={worldwideAnalytics.mostCommonGoal || 'N/A'} highlight />
+                  <HudCard label="Geographic Insights">
+                    <div className="space-y-2">
+                      <div className="text-sm">
+                        <span className="text-zinc-500">Countries:</span>
+                        <span className="text-white ml-2 font-bold">{Object.keys(worldwideAnalytics.countryDistribution || {}).length}</span>
+                      </div>
+                      {Object.entries(worldwideAnalytics.countryDistribution || {}).slice(0, 3).map(([country, count]) => (
+                        <div key={country} className="flex justify-between text-sm">
+                          <span className="text-zinc-400">🌍 {country}</span>
+                          <span className="text-white font-bold">{count}</span>
+                        </div>
+                      ))}
                     </div>
                   </HudCard>
                 </div>
@@ -294,7 +302,7 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                               {new Date(session.createdAt).toLocaleString()}
                             </p>
                             <p className="text-[10px] font-mono text-zinc-600">
-                              📍 {session.metadata.country} • {session.metadata.ip}
+                              📍 {session.metadata.country} • {session.metadata.city} • {session.metadata.device} • {session.metadata.browser}
                             </p>
                           </div>
                           <div className="text-right">
@@ -322,6 +330,26 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                           <div>
                             <span className="text-zinc-500">BMR:</span>
                             <span className="text-white ml-2">{session.results.bmr} kcal</span>
+                          </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-zinc-800">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                            <div>
+                              <span className="text-zinc-500">Country:</span>
+                              <span className="text-white ml-2">{session.metadata.country}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500">City:</span>
+                              <span className="text-white ml-2">{session.metadata.city}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500">Device:</span>
+                              <span className="text-white ml-2">{session.metadata.device}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500">Browser:</span>
+                              <span className="text-white ml-2">{session.metadata.browser}</span>
+                            </div>
                           </div>
                         </div>
                       </HudCard>
