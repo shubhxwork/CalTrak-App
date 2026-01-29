@@ -45,51 +45,51 @@ export interface MacroFood {
 export const FOOD_RECOMMENDATIONS: Record<DietaryPreference, Record<'protein' | 'carbs' | 'fats', MacroFood[]>> = {
   'non-veg': {
     protein: [
-      { name: 'Lean Chicken Breast', macros: 'P: 31g | C: 0g | F: 3.6g' },
-      { name: 'Whole Eggs (Large)', macros: 'P: 6g | C: 0.6g | F: 5g' },
-      { name: 'Rohu / Katla Fish', macros: 'P: 19g | C: 0g | F: 2g' },
-      { name: 'Lean Mutton (Goat)', macros: 'P: 25g | C: 0g | F: 8g' },
-      { name: 'Soya Chunks (Dry)', macros: 'P: 52g | C: 33g | F: 0.5g' },
-      { name: 'Whey Protein (1 scoop)', macros: 'P: 24g | C: 2g | F: 1.5g' }
+      { name: 'Lean Chicken Breast', macros: 'Per 100g (Raw) | P: 31g | C: 0g | F: 3.6g' },
+      { name: 'Whole Eggs (Large)', macros: 'Per 1 Egg | P: 6g | C: 0.6g | F: 5g' },
+      { name: 'Rohu / Katla Fish', macros: 'Per 100g | P: 19g | C: 0g | F: 2g' },
+      { name: 'Lean Mutton (Goat)', macros: 'Per 100g | P: 25g | C: 0g | F: 8g' },
+      { name: 'Soya Chunks (Dry)', macros: 'Per 100g | P: 52g | C: 33g | F: 0.5g' },
+      { name: 'Whey Protein', macros: 'Per 1 scoop (32g) | P: 24g | C: 2g | F: 1.5g' }
     ],
     carbs: [
-      { name: 'Atta Roti (1 pc)', macros: 'P: 3g | C: 15g | F: 0.4g' },
-      { name: 'Basmati Rice (Cooked)', macros: 'P: 3g | C: 28g | F: 0.3g' },
-      { name: 'Ragi / Millets', macros: 'P: 7g | C: 72g | F: 1.3g' },
-      { name: 'Poha (Dry)', macros: 'P: 6g | C: 77g | F: 1g' },
-      { name: 'Sweet Potato', macros: 'P: 1.6g | C: 20g | F: 0.1g' },
-      { name: 'Dalia (Broken Wheat)', macros: 'P: 12g | C: 76g | F: 1g' }
+      { name: 'Atta Roti (Standard)', macros: 'Per 1 pc | P: 3g | C: 15g | F: 0.4g' },
+      { name: 'Basmati Rice', macros: 'Per 100g (Cooked) | P: 3g | C: 28g | F: 0.3g' },
+      { name: 'Ragi / Millets', macros: 'Per 100g (Raw) | P: 7g | C: 72g | F: 1.3g' },
+      { name: 'Poha (Flattened Rice)', macros: 'Per 100g (Dry) | P: 6g | C: 77g | F: 1g' },
+      { name: 'Sweet Potato', macros: 'Per 100g (Boiled) | P: 1.6g | C: 20g | F: 0.1g' },
+      { name: 'Dalia (Broken Wheat)', macros: 'Per 100g (Raw) | P: 12g | C: 76g | F: 1g' }
     ],
     fats: [
-      { name: 'Desi Ghee (1 tsp)', macros: 'P: 0g | C: 0g | F: 5g' },
-      { name: 'Peanuts (Moongfali)', macros: 'P: 26g | C: 16g | F: 49g' },
-      { name: 'Almonds (Badam)', macros: 'P: 21g | C: 22g | F: 50g' },
-      { name: 'Walnuts (Akhrot)', macros: 'P: 15g | C: 14g | F: 65g' },
-      { name: 'Mustard Oil (1 tbsp)', macros: 'P: 0g | C: 0g | F: 14g' }
+      { name: 'Desi Ghee', macros: 'Per 1 tsp (5g) | P: 0g | C: 0g | F: 5g' },
+      { name: 'Peanuts', macros: 'Per 100g | P: 26g | C: 16g | F: 49g' },
+      { name: 'Almonds (Raw)', macros: 'Per 100g | P: 21g | C: 22g | F: 50g' },
+      { name: 'Walnuts (Shelled)', macros: 'Per 100g | P: 15g | C: 14g | F: 65g' },
+      { name: 'Mustard Oil', macros: 'Per 1 tbsp (14g) | P: 0g | C: 0g | F: 14g' }
     ],
   },
   'veg': {
     protein: [
-      { name: 'Low Fat Paneer', macros: 'P: 20g | C: 4g | F: 15g' },
-      { name: 'Soya Chunks (Dry)', macros: 'P: 52g | C: 33g | F: 0.5g' },
-      { name: 'Mixed Dals (Rajma/Dal)', macros: 'P: 24g | C: 60g | F: 1.5g' },
-      { name: 'Greek Yogurt (Dahi)', macros: 'P: 10g | C: 4g | F: 0g' },
-      { name: 'Tofu (Soya Paneer)', macros: 'P: 8g | C: 2g | F: 4g' },
-      { name: 'Roasted Chana', macros: 'P: 19g | C: 58g | F: 5g' }
+      { name: 'Low Fat Paneer', macros: 'Per 100g | P: 20g | C: 4g | F: 15g' },
+      { name: 'Soya Chunks (Dry)', macros: 'Per 100g | P: 52g | C: 33g | F: 0.5g' },
+      { name: 'Mixed Dals (Rajma/Dal)', macros: 'Per 100g (Dry) | P: 24g | C: 60g | F: 1.5g' },
+      { name: 'Greek Yogurt (Dahi)', macros: 'Per 100g | P: 10g | C: 4g | F: 0g' },
+      { name: 'Tofu (Soya Paneer)', macros: 'Per 100g | P: 8g | C: 2g | F: 4g' },
+      { name: 'Roasted Chana', macros: 'Per 100g | P: 19g | C: 58g | F: 5g' }
     ],
     carbs: [
-      { name: 'Whole Wheat Roti', macros: 'P: 3g | C: 15g | F: 0.4g' },
-      { name: 'Ragi Mudde', macros: 'P: 7g | C: 72g | F: 1.3g' },
-      { name: 'Oats with Milk', macros: 'P: 11g | C: 60g | F: 7g' },
-      { name: 'Brown Rice (Cooked)', macros: 'P: 2.6g | C: 23g | F: 0.9g' },
-      { name: 'Boiled Potato', macros: 'P: 2g | C: 17g | F: 0.1g' }
+      { name: 'Whole Wheat Roti', macros: 'Per 1 pc | P: 3g | C: 15g | F: 0.4g' },
+      { name: 'Ragi Mudde', macros: 'Per 100g | P: 7g | C: 72g | F: 1.3g' },
+      { name: 'Oats with Milk', macros: 'Per 100g (Cooked) | P: 11g | C: 60g | F: 7g' },
+      { name: 'Brown Rice', macros: 'Per 100g (Cooked) | P: 2.6g | C: 23g | F: 0.9g' },
+      { name: 'Boiled Potato', macros: 'Per 100g | P: 2g | C: 17g | F: 0.1g' }
     ],
     fats: [
-      { name: 'Peanut Butter', macros: 'P: 25g | C: 20g | F: 50g' },
-      { name: 'Mixed Nuts', macros: 'P: 20g | C: 20g | F: 50g' },
-      { name: 'Chia Seeds', macros: 'P: 17g | C: 42g | F: 31g' },
-      { name: 'Cow Ghee (1 tsp)', macros: 'P: 0g | C: 0g | F: 5g' },
-      { name: 'Pumpkin Seeds', macros: 'P: 30g | C: 10g | F: 49g' }
+      { name: 'Peanut Butter', macros: 'Per 100g | P: 25g | C: 20g | F: 50g' },
+      { name: 'Mixed Nuts', macros: 'Per 100g | P: 20g | C: 20g | F: 50g' },
+      { name: 'Chia Seeds', macros: 'Per 100g | P: 17g | C: 42g | F: 31g' },
+      { name: 'Cow Ghee', macros: 'Per 1 tsp (5g) | P: 0g | C: 0g | F: 5g' },
+      { name: 'Pumpkin Seeds', macros: 'Per 100g | P: 30g | C: 10g | F: 49g' }
     ],
   }
 };

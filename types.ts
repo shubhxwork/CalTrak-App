@@ -39,6 +39,7 @@ export interface CalculationResults {
   lbm: number;
   bmr: number;
   tdee: number;
+  waterLiters: number;
   formulaUsed: 'Katch-McArdle' | 'Mifflin-St Jeor';
   expectedWeightChange: string;
   warnings: string[];

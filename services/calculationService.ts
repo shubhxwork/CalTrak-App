@@ -85,7 +85,11 @@ export const calculateResults = (inputs: UserInputs): CalculationResults => {
   const fatPct = Math.round((fatCalories / targetCalories) * 100);
   const carbsPct = 100 - proteinPct - fatPct;
 
-  // 5. Milestones & Projections
+  // 5. Hydration
+  // Standard recommendation: 35ml per kg of body weight
+  const waterLiters = weightKg * 0.035;
+
+  // 6. Milestones & Projections
   const milestones: Milestone[] = [];
   const rate = weeklyRate || (goal === 'bulk' ? 0.25 : 0.5);
 
@@ -134,7 +138,7 @@ export const calculateResults = (inputs: UserInputs): CalculationResults => {
     });
   }
 
-  // 6. Timeline Formatting
+  // 7. Timeline Formatting
   let monthsToTarget: string | undefined;
   let expectedChangeText = "";
 
@@ -161,6 +165,7 @@ export const calculateResults = (inputs: UserInputs): CalculationResults => {
     lbm: Math.round(lbm),
     bmr: Math.round(bmr),
     tdee: Math.round(tdee),
+    waterLiters,
     formulaUsed,
     expectedWeightChange: expectedChangeText,
     warnings,
