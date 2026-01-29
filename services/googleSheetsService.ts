@@ -110,25 +110,41 @@ export class GoogleSheetsService {
 
       console.log('📋 Data payload:', rowData);
 
-      const response = await fetch(GOOGLE_SHEETS_CONFIG.scriptUrl, {
+      // Validate the URL format
+      if (!GOOGLE_SHEETS_CONFIG.scriptUrl.includes('script.google.com')) {
+        throw new Error('Invalid Google Apps Script URL format');
+      }
+
+      const requestOptions: RequestInit = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(rowData),
         mode: 'no-cors' // Required for Google Apps Script
+      };
+
+      console.log('🚀 Making request with options:', {
+        method: requestOptions.method,
+        headers: requestOptions.headers,
+        bodyLength: requestOptions.body?.length,
+        mode: requestOptions.mode
       });
+
+      const response = await fetch(GOOGLE_SHEETS_CONFIG.scriptUrl, requestOptions);
 
       // Note: With no-cors mode, we can't read the response
       // But the request will still be sent to Google Sheets
-      console.log('✅ Data sent to Google Sheets successfully');
+      console.log('✅ Request sent to Google Sheets (no-cors mode - cannot read response)');
       
       // Store success in localStorage for debugging
       const debugInfo = {
         lastSent: new Date().toISOString(),
         sessionId: sessionId,
         userName: inputs.name,
-        status: 'sent'
+        status: 'sent',
+        url: GOOGLE_SHEETS_CONFIG.scriptUrl,
+        dataSize: JSON.stringify(rowData).length
       };
       localStorage.setItem('caltrak_sheets_debug', JSON.stringify(debugInfo));
       
@@ -142,7 +158,8 @@ export class GoogleSheetsService {
         lastError: new Date().toISOString(),
         sessionId: sessionId,
         error: error.toString(),
-        status: 'failed'
+        status: 'failed',
+        url: GOOGLE_SHEETS_CONFIG.scriptUrl
       };
       localStorage.setItem('caltrak_sheets_debug', JSON.stringify(debugInfo));
       

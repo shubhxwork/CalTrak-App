@@ -16,8 +16,42 @@ const SHEET_NAME = 'CalTrak Data';
 
 function doPost(e) {
   try {
+    console.log('=== CalTrak Data Request Received ===');
+    console.log('Event object:', e);
+    console.log('Event keys:', Object.keys(e || {}));
+    
+    // Check if we have postData
+    if (!e || !e.postData) {
+      console.error('No postData found in request');
+      console.log('Request method might be GET instead of POST');
+      
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false, 
+          error: 'No POST data received. Ensure request is sent as POST with JSON body.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    console.log('POST data contents:', e.postData.contents);
+    console.log('POST data type:', e.postData.type);
+    
     // Parse the incoming data
-    const data = JSON.parse(e.postData.contents);
+    let data;
+    try {
+      data = JSON.parse(e.postData.contents);
+      console.log('Parsed data successfully:', data);
+    } catch (parseError) {
+      console.error('JSON parsing failed:', parseError);
+      console.log('Raw contents:', e.postData.contents);
+      
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false, 
+          error: 'Invalid JSON data: ' + parseError.toString()
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     
     // Handle test connections
     if (data.test) {
@@ -27,12 +61,45 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
+    // Validate required data fields
+    if (!data.name || !data.calories) {
+      console.error('Missing required fields:', {
+        hasName: !!data.name,
+        hasCalories: !!data.calories
+      });
+      
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false, 
+          error: 'Missing required fields: name and calories are required'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    console.log('Processing data for user:', data.name);
+    
     // Get or create the spreadsheet
-    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let spreadsheet;
+    try {
+      spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+      console.log('Spreadsheet opened successfully:', spreadsheet.getName());
+    } catch (spreadsheetError) {
+      console.error('Failed to open spreadsheet:', spreadsheetError);
+      console.log('Spreadsheet ID used:', SPREADSHEET_ID);
+      
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false, 
+          error: 'Failed to access spreadsheet. Check SPREADSHEET_ID: ' + spreadsheetError.toString()
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
     let sheet = spreadsheet.getSheetByName(SHEET_NAME);
     
     // Create sheet if it doesn't exist
     if (!sheet) {
+      console.log('Creating new sheet:', SHEET_NAME);
       sheet = spreadsheet.insertSheet(SHEET_NAME);
       
       // Add headers
@@ -59,79 +126,108 @@ function doPost(e) {
       
       // Auto-resize columns
       sheet.autoResizeColumns(1, headers.length);
+      
+      console.log('Sheet created and formatted successfully');
     }
     
-    // Prepare row data
+    // Prepare row data with safe defaults
     const rowData = [
-      data.timestamp,
-      data.sessionId,
-      data.name,
+      data.timestamp || new Date().toISOString(),
+      data.sessionId || 'unknown',
+      data.name || 'Unknown User',
       data.age || '',
-      data.gender,
-      data.weight,
+      data.gender || 'unknown',
+      data.weight || 0,
       data.height || '',
-      data.bodyFat,
-      data.unitSystem,
-      data.activityLevel,
-      data.goal,
+      data.bodyFat || 0,
+      data.unitSystem || 'metric',
+      data.activityLevel || 'moderate',
+      data.goal || 'maintenance',
       data.targetWeight || '',
       data.weeklyRate || '',
-      data.calories,
-      data.proteinG,
-      data.proteinPct,
-      data.carbsG,
-      data.carbsPct,
-      data.fatG,
-      data.fatPct,
-      data.fiberG,
-      data.waterLiters,
-      data.lbm,
-      data.bmr,
-      data.tdee,
-      data.formulaUsed,
-      data.expectedWeightChange,
-      data.safetyLevel,
+      data.calories || 0,
+      data.proteinG || 0,
+      data.proteinPct || 0,
+      data.carbsG || 0,
+      data.carbsPct || 0,
+      data.fatG || 0,
+      data.fatPct || 0,
+      data.fiberG || 0,
+      data.waterLiters || 0,
+      data.lbm || 0,
+      data.bmr || 0,
+      data.tdee || 0,
+      data.formulaUsed || 'Unknown',
+      data.expectedWeightChange || '',
+      data.safetyLevel || 'UNKNOWN',
       data.monthsToTarget || '',
-      data.milestoneCount,
-      data.userAgent,
-      data.referrer
+      data.milestoneCount || 0,
+      data.userAgent || 'Unknown Browser',
+      data.referrer || 'Direct'
     ];
     
+    console.log('Row data prepared, adding to sheet...');
+    
     // Add the data to the sheet
-    sheet.appendRow(rowData);
-    
-    // Optional: Add conditional formatting for safety levels
-    const lastRow = sheet.getLastRow();
-    const safetyCell = sheet.getRange(lastRow, 28); // Safety Level column
-    
-    if (data.safetyLevel === 'CRITICAL') {
-      safetyCell.setBackground('#ffebee').setFontColor('#c62828');
-    } else if (data.safetyLevel === 'CAUTION') {
-      safetyCell.setBackground('#fff3e0').setFontColor('#ef6c00');
-    } else {
-      safetyCell.setBackground('#e8f5e8').setFontColor('#2e7d32');
+    try {
+      sheet.appendRow(rowData);
+      const lastRow = sheet.getLastRow();
+      console.log('Data added successfully to row:', lastRow);
+      
+      // Optional: Add conditional formatting for safety levels
+      const safetyCell = sheet.getRange(lastRow, 28); // Safety Level column
+      
+      if (data.safetyLevel === 'CRITICAL') {
+        safetyCell.setBackground('#ffebee').setFontColor('#c62828');
+      } else if (data.safetyLevel === 'CAUTION') {
+        safetyCell.setBackground('#fff3e0').setFontColor('#ef6c00');
+      } else {
+        safetyCell.setBackground('#e8f5e8').setFontColor('#2e7d32');
+      }
+      
+      console.log('Data saved successfully for user:', data.name);
+      
+      return ContentService
+        .createTextOutput(JSON.stringify({success: true, row: lastRow}))
+        .setMimeType(ContentService.MimeType.JSON);
+        
+    } catch (appendError) {
+      console.error('Failed to append data to sheet:', appendError);
+      
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false, 
+          error: 'Failed to save data to sheet: ' + appendError.toString()
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
     }
-    
-    console.log('Data saved successfully for user:', data.name);
-    
-    return ContentService
-      .createTextOutput(JSON.stringify({success: true, row: lastRow}))
-      .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
-    console.error('Error saving data:', error);
+    console.error('Unexpected error in doPost:', error);
+    console.error('Error stack:', error.stack);
     
     return ContentService
-      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .createTextOutput(JSON.stringify({
+        success: false, 
+        error: 'Unexpected server error: ' + error.toString()
+      }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function doGet(e) {
+  console.log('=== GET Request Received ===');
+  console.log('Parameters:', e.parameter);
+  
   // Handle GET requests (for testing)
   return ContentService
-    .createTextOutput('CalTrak Google Sheets Integration is running!')
-    .setMimeType(ContentService.MimeType.TEXT);
+    .createTextOutput(JSON.stringify({
+      message: 'CalTrak Google Sheets Integration is running!',
+      timestamp: new Date().toISOString(),
+      method: 'GET',
+      note: 'Use POST requests to send data'
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // Helper function to create a new spreadsheet (run this once if needed)
