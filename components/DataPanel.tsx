@@ -9,13 +9,16 @@ interface DataPanelProps {
 }
 
 export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
-  const [activeView, setActiveView] = useState<'worldwide' | 'sheets'>('worldwide');
+  const [activeView, setActiveView] = useState<'worldwide' | 'sheets' | 'manage'>('worldwide');
   const [testingConnection, setTestingConnection] = useState(false);
   const [worldwideData, setWorldwideData] = useState<BackendSession[]>([]);
   const [worldwideAnalytics, setWorldwideAnalytics] = useState<BackendAnalytics | null>(null);
   const [loadingWorldwide, setLoadingWorldwide] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
   const [exportStatus, setExportStatus] = useState<{type: 'success' | 'error', message: string, details?: string} | null>(null);
+  const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   useEffect(() => {
     // Load worldwide data on component mount
@@ -145,6 +148,85 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
     }
   };
 
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessions(prev => 
+      prev.includes(sessionId) 
+        ? prev.filter(id => id !== sessionId)
+        : [...prev, sessionId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedSessions.length === worldwideData.length) {
+      setSelectedSessions([]);
+    } else {
+      setSelectedSessions(worldwideData.map(session => session.sessionId));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedSessions.length === 0) return;
+
+    const confirmMessage = `Are you sure you want to delete ${selectedSessions.length} selected session(s)? This action cannot be undone.`;
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsDeleting(true);
+    setDeleteStatus(null);
+
+    try {
+      const result = await BackendService.deleteSessions(selectedSessions);
+      
+      setDeleteStatus({
+        type: 'success',
+        message: `Successfully deleted ${result.deletedCount} sessions`
+      });
+
+      // Refresh data and clear selection
+      await loadWorldwideData();
+      setSelectedSessions([]);
+
+    } catch (error) {
+      setDeleteStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to delete sessions'
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const confirmMessage = `Are you sure you want to delete ALL ${worldwideData.length} worldwide sessions? This action cannot be undone and will permanently remove all user data from the database.`;
+    if (!window.confirm(confirmMessage)) return;
+
+    const doubleConfirm = window.prompt('Type "DELETE ALL" to confirm this destructive action:');
+    if (doubleConfirm !== 'DELETE ALL') return;
+
+    setIsDeleting(true);
+    setDeleteStatus(null);
+
+    try {
+      const result = await BackendService.deleteAllSessions();
+      
+      setDeleteStatus({
+        type: 'success',
+        message: `Successfully deleted all ${result.deletedCount} sessions`
+      });
+
+      // Refresh data and clear selection
+      await loadWorldwideData();
+      setSelectedSessions([]);
+
+    } catch (error) {
+      setDeleteStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to delete all sessions'
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleTestConnection = async () => {
     setTestingConnection(true);
     try {
@@ -200,7 +282,8 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
         <div className="flex border-b border-zinc-800">
           {[
             { key: 'worldwide', label: 'Worldwide Data', icon: 'fa-globe' },
-            { key: 'sheets', label: 'Export to Sheets', icon: 'fa-table' }
+            { key: 'sheets', label: 'Export to Sheets', icon: 'fa-table' },
+            { key: 'manage', label: 'Data Management', icon: 'fa-trash-can' }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -467,6 +550,144 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                   )}
                 </div>
               </HudCard>
+            </div>
+          )}
+
+          {activeView === 'manage' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-robust italic text-white uppercase">🗑️ Data Management</h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-zinc-400">
+                    {selectedSessions.length} of {worldwideData.length} selected
+                  </span>
+                  <button
+                    onClick={handleSelectAll}
+                    className="px-4 py-2 bg-zinc-700 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-zinc-600 transition-colors"
+                  >
+                    {selectedSessions.length === worldwideData.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+              </div>
+
+              {deleteStatus && (
+                <div className={`p-4 rounded-lg border-l-4 ${
+                  deleteStatus.type === 'success' 
+                    ? 'bg-green-900/20 border-green-500 text-green-400' 
+                    : 'bg-red-900/20 border-red-500 text-red-400'
+                }`}>
+                  <div className="flex items-center">
+                    <i className={`fa-solid ${deleteStatus.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'} mr-2`}></i>
+                    <span className="font-bold">{deleteStatus.message}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <HudCard label="Selective Deletion">
+                  <div className="space-y-4">
+                    <p className="text-sm text-zinc-400">
+                      Select specific sessions to delete from the worldwide database. Use checkboxes in the session list below.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleDeleteSelected}
+                        disabled={selectedSessions.length === 0 || isDeleting}
+                        className="flex-1 px-4 py-3 bg-orange-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <i className={`fa-solid ${isDeleting ? 'fa-spinner fa-spin' : 'fa-trash'} mr-2`}></i>
+                        {isDeleting ? 'Deleting...' : `Delete Selected (${selectedSessions.length})`}
+                      </button>
+                    </div>
+                  </div>
+                </HudCard>
+
+                <HudCard label="Complete Data Wipe">
+                  <div className="space-y-4">
+                    <p className="text-sm text-zinc-400">
+                      ⚠️ Permanently delete ALL worldwide user data. This action cannot be undone and will remove all sessions from the database.
+                    </p>
+                    <button
+                      onClick={handleDeleteAll}
+                      disabled={worldwideData.length === 0 || isDeleting}
+                      className="w-full px-4 py-3 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <i className={`fa-solid ${isDeleting ? 'fa-spinner fa-spin' : 'fa-skull-crossbones'} mr-2`}></i>
+                      {isDeleting ? 'Deleting...' : `Delete All Sessions (${worldwideData.length})`}
+                    </button>
+                  </div>
+                </HudCard>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-lg font-robust italic text-white">Select Sessions to Delete</h4>
+                
+                {worldwideData.length > 0 ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {worldwideData.slice().reverse().map((session, index) => (
+                      <HudCard key={session.sessionId} className="p-4">
+                        <div className="flex items-start gap-4">
+                          <div className="flex items-center pt-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedSessions.includes(session.sessionId)}
+                              onChange={() => handleSelectSession(session.sessionId)}
+                              className="w-4 h-4 text-[#FC4C02] bg-zinc-800 border-zinc-600 rounded focus:ring-[#FC4C02] focus:ring-2"
+                            />
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h4 className="text-lg font-robust italic text-white">{session.inputs.name}</h4>
+                                <p className="text-[10px] font-mono text-zinc-500 uppercase">
+                                  {new Date(session.createdAt).toLocaleString()}
+                                </p>
+                                <p className="text-[10px] font-mono text-zinc-600">
+                                  📍 {session.metadata.country} • {session.metadata.city} • {session.metadata.device} • {session.metadata.browser}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-robust italic text-[#FC4C02]">
+                                  {session.results.calories} KCAL
+                                </div>
+                                <p className="text-[10px] font-mono text-zinc-500 uppercase">
+                                  {session.inputs.goal}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                              <div>
+                                <span className="text-zinc-500">Weight:</span>
+                                <span className="text-white ml-2">{session.inputs.weight} {session.inputs.unitSystem === 'metric' ? 'kg' : 'lb'}</span>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500">Body Fat:</span>
+                                <span className="text-white ml-2">{session.inputs.bodyFat}%</span>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500">Activity:</span>
+                                <span className="text-white ml-2">{session.inputs.activityLevel}</span>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500">BMR:</span>
+                                <span className="text-white ml-2">{session.results.bmr} kcal</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </HudCard>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <i className="fa-solid fa-database text-4xl text-zinc-600 mb-4"></i>
+                    <p className="text-zinc-500 font-mono text-sm">
+                      {loadingWorldwide ? 'Loading worldwide data...' : 'No worldwide data available'}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

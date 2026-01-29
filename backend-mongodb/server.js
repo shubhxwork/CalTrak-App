@@ -436,6 +436,66 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// Delete specific sessions (admin only)
+app.delete('/api/sessions/delete', async (req, res) => {
+  try {
+    // Admin authentication
+    const adminKey = req.get('X-Admin-Key');
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid admin key' });
+    }
+
+    const { sessionIds } = req.body;
+    
+    if (!sessionIds || !Array.isArray(sessionIds) || sessionIds.length === 0) {
+      return res.status(400).json({ error: 'sessionIds array is required' });
+    }
+
+    console.log(`🗑️ Deleting ${sessionIds.length} sessions...`);
+
+    const result = await Session.deleteMany({ sessionId: { $in: sessionIds } });
+
+    console.log(`✅ Deleted ${result.deletedCount} sessions`);
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+      message: `Successfully deleted ${result.deletedCount} sessions`
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting sessions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete all sessions (admin only)
+app.delete('/api/sessions/delete-all', async (req, res) => {
+  try {
+    // Admin authentication
+    const adminKey = req.get('X-Admin-Key');
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid admin key' });
+    }
+
+    console.log('🗑️ Deleting ALL sessions...');
+
+    const result = await Session.deleteMany({});
+
+    console.log(`✅ Deleted all sessions: ${result.deletedCount} total`);
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+      message: `Successfully deleted all ${result.deletedCount} sessions`
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting all sessions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('❌ Unhandled error:', error);

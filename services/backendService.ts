@@ -269,6 +269,56 @@ export class BackendService {
     BACKEND_CONFIG.enabled = enabled;
     console.log(`🔌 Backend service ${enabled ? 'enabled' : 'disabled'}`);
   }
+
+  // Delete specific sessions (admin only)
+  static async deleteSessions(sessionIds: string[]) {
+    try {
+      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/sessions/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Key': BACKEND_CONFIG.adminKey
+        },
+        body: JSON.stringify({ sessionIds })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Deleted ${data.deletedCount} sessions`);
+      return data;
+
+    } catch (error) {
+      console.error('❌ Failed to delete sessions:', error);
+      throw error;
+    }
+  }
+
+  // Delete all sessions (admin only)
+  static async deleteAllSessions() {
+    try {
+      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/sessions/delete-all`, {
+        method: 'DELETE',
+        headers: {
+          'X-Admin-Key': BACKEND_CONFIG.adminKey
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Deleted all sessions: ${data.deletedCount} total`);
+      return data;
+
+    } catch (error) {
+      console.error('❌ Failed to delete all sessions:', error);
+      throw error;
+    }
+  }
 }
 
 // Expose backend methods to window for admin use
