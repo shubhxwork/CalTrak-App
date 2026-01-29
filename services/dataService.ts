@@ -191,12 +191,29 @@ declare global {
   }
 }
 
-// Expose data access methods to window for developer use
+// Expose data access methods to window for developer use (only if authenticated)
 if (typeof window !== 'undefined') {
-  window.CalTrakData = {
-    export: () => DataService.exportUserData(),
-    analytics: () => DataService.getUserAnalytics(),
-    sessions: () => DataService.getUserSessions(),
-    clear: () => DataService.clearUserData()
+  // Only expose if user is authenticated or auth is disabled
+  const exposeDataMethods = () => {
+    if (typeof (window as any).CalTrakAuth !== 'undefined') {
+      const AuthService = (window as any).CalTrakAuth;
+      if (AuthService.isAuthenticated()) {
+        window.CalTrakData = {
+          export: () => DataService.exportUserData(),
+          analytics: () => DataService.getUserAnalytics(),
+          sessions: () => DataService.getUserSessions(),
+          clear: () => DataService.clearUserData()
+        };
+      } else {
+        // Remove access if not authenticated
+        delete (window as any).CalTrakData;
+      }
+    }
   };
+
+  // Check authentication status periodically
+  setInterval(exposeDataMethods, 5000);
+  
+  // Initial check
+  setTimeout(exposeDataMethods, 1000);
 }

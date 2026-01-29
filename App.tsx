@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { UserInputs, CalculationResults } from './types';
 import { calculateResults } from './services/calculationService';
 import { DataService } from './services/dataService';
+import { AuthService } from './services/authService';
 import InputForm from './components/InputForm';
 import ResultsView from './components/ResultsView';
 import Dashboard from './components/Dashboard';
 import { Insights } from './components/Insights';
 import { DataPanel } from './components/DataPanel';
+import { AdminLogin } from './components/AdminLogin';
 import { Logo } from './components/ui/Logo';
 import { NavButton } from './components/ui/NavButton';
 
@@ -20,13 +22,14 @@ const App: React.FC = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showDataPanel, setShowDataPanel] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   // Keyboard shortcut to open data panel (Ctrl/Cmd + Shift + D)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'D') {
         event.preventDefault();
-        setShowDataPanel(true);
+        handleDataPanelAccess();
       }
     };
 
@@ -57,6 +60,23 @@ const App: React.FC = () => {
     setResults(null);
     setSessionId(null);
     setActiveTab('blueprint');
+  };
+
+  const handleDataPanelAccess = () => {
+    if (AuthService.isAuthenticated()) {
+      setShowDataPanel(true);
+    } else {
+      setShowAdminLogin(true);
+    }
+  };
+
+  const handleAdminLogin = () => {
+    setShowAdminLogin(false);
+    setShowDataPanel(true);
+  };
+
+  const handleAdminLoginCancel = () => {
+    setShowAdminLogin(false);
   };
 
   const renderContent = () => {
@@ -115,9 +135,9 @@ const App: React.FC = () => {
           </div>
           {/* Developer Data Access Button */}
           <button
-            onClick={() => setShowDataPanel(true)}
+            onClick={handleDataPanelAccess}
             className="w-8 h-8 rounded-full bg-zinc-800/50 hover:bg-zinc-700 flex items-center justify-center transition-colors opacity-30 hover:opacity-100"
-            title="Data Analytics (Cmd+Shift+D on Mac, Ctrl+Shift+D on Windows)"
+            title="Admin Panel (Cmd+Shift+D on Mac, Ctrl+Shift+D on Windows)"
           >
             <i className="fa-solid fa-chart-line text-xs text-zinc-400"></i>
           </button>
@@ -159,6 +179,14 @@ const App: React.FC = () => {
       {/* Data Panel Modal */}
       {showDataPanel && (
         <DataPanel onClose={() => setShowDataPanel(false)} />
+      )}
+
+      {/* Admin Login Modal */}
+      {showAdminLogin && (
+        <AdminLogin 
+          onLogin={handleAdminLogin}
+          onCancel={handleAdminLoginCancel}
+        />
       )}
     </div>
   );

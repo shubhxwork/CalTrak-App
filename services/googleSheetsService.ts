@@ -57,14 +57,20 @@ export class GoogleSheetsService {
   ): Promise<boolean> {
     
     if (!GOOGLE_SHEETS_CONFIG.enabled || !GOOGLE_SHEETS_CONFIG.scriptUrl) {
-      console.log('Google Sheets integration disabled or not configured');
+      console.log('📊 Google Sheets integration disabled or not configured');
       return false;
     }
 
     if (GOOGLE_SHEETS_CONFIG.scriptUrl === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-      console.warn('Google Sheets URL not configured. Please update GOOGLE_SHEETS_CONFIG.scriptUrl');
+      console.warn('⚠️ Google Sheets URL not configured. Please update GOOGLE_SHEETS_CONFIG.scriptUrl');
       return false;
     }
+
+    console.log('📤 Sending data to Google Sheets...', {
+      sessionId,
+      user: inputs.name,
+      url: GOOGLE_SHEETS_CONFIG.scriptUrl
+    });
 
     try {
       const rowData: SheetRowData = {
@@ -102,6 +108,8 @@ export class GoogleSheetsService {
         referrer: document.referrer || 'Direct'
       };
 
+      console.log('📋 Data payload:', rowData);
+
       const response = await fetch(GOOGLE_SHEETS_CONFIG.scriptUrl, {
         method: 'POST',
         headers: {
@@ -113,11 +121,31 @@ export class GoogleSheetsService {
 
       // Note: With no-cors mode, we can't read the response
       // But the request will still be sent to Google Sheets
-      console.log('Data sent to Google Sheets successfully');
+      console.log('✅ Data sent to Google Sheets successfully');
+      
+      // Store success in localStorage for debugging
+      const debugInfo = {
+        lastSent: new Date().toISOString(),
+        sessionId: sessionId,
+        userName: inputs.name,
+        status: 'sent'
+      };
+      localStorage.setItem('caltrak_sheets_debug', JSON.stringify(debugInfo));
+      
       return true;
 
     } catch (error) {
-      console.error('Failed to save to Google Sheets:', error);
+      console.error('❌ Failed to save to Google Sheets:', error);
+      
+      // Store error info for debugging
+      const debugInfo = {
+        lastError: new Date().toISOString(),
+        sessionId: sessionId,
+        error: error.toString(),
+        status: 'failed'
+      };
+      localStorage.setItem('caltrak_sheets_debug', JSON.stringify(debugInfo));
+      
       return false;
     }
   }
@@ -143,6 +171,8 @@ export class GoogleSheetsService {
         message: 'Connection test from CalTrak'
       };
 
+      console.log('🧪 Testing Google Sheets connection...', GOOGLE_SHEETS_CONFIG.scriptUrl);
+
       await fetch(GOOGLE_SHEETS_CONFIG.scriptUrl, {
         method: 'POST',
         headers: {
@@ -152,12 +182,27 @@ export class GoogleSheetsService {
         mode: 'no-cors'
       });
 
-      console.log('Test connection sent to Google Sheets');
+      console.log('✅ Test connection sent to Google Sheets');
       return true;
     } catch (error) {
-      console.error('Google Sheets connection test failed:', error);
+      console.error('❌ Google Sheets connection test failed:', error);
       return false;
     }
+  }
+
+  // Method to get debug information
+  static getDebugInfo() {
+    try {
+      const debugInfo = localStorage.getItem('caltrak_sheets_debug');
+      return debugInfo ? JSON.parse(debugInfo) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Method to clear debug information
+  static clearDebugInfo() {
+    localStorage.removeItem('caltrak_sheets_debug');
   }
 }
 
@@ -172,10 +217,29 @@ declare global {
   }
 }
 
+// Expose configuration methods to window for easy setup (only if authenticated)
 if (typeof window !== 'undefined') {
-  window.CalTrakSheets = {
-    updateConfig: GoogleSheetsService.updateConfig,
-    testConnection: GoogleSheetsService.testConnection,
-    getConfig: () => ({ ...GOOGLE_SHEETS_CONFIG })
+  const exposeSheetsConfig = () => {
+    if (typeof (window as any).CalTrakAuth !== 'undefined') {
+      const AuthService = (window as any).CalTrakAuth;
+      if (AuthService.isAuthenticated()) {
+        window.CalTrakSheets = {
+          updateConfig: GoogleSheetsService.updateConfig,
+          testConnection: GoogleSheetsService.testConnection,
+          getConfig: () => ({ ...GOOGLE_SHEETS_CONFIG }),
+          getDebugInfo: GoogleSheetsService.getDebugInfo,
+          clearDebugInfo: GoogleSheetsService.clearDebugInfo
+        };
+      } else {
+        // Remove access if not authenticated
+        delete (window as any).CalTrakSheets;
+      }
+    }
   };
+
+  // Check authentication status periodically
+  setInterval(exposeSheetsConfig, 5000);
+  
+  // Initial check
+  setTimeout(exposeSheetsConfig, 1000);
 }

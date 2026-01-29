@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DataService, UserSession } from '../services/dataService';
 import { GoogleSheetsService } from '../services/googleSheetsService';
+import { AuthService } from '../services/authService';
 import { HudCard } from './ui/HudCard';
 import { MetricRow } from './ui/MetricRow';
 
@@ -68,15 +69,38 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-6 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-robust italic text-white uppercase">Data Analytics</h2>
-            <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Developer Panel</p>
+            <h2 className="text-2xl font-robust italic text-white uppercase">Admin Dashboard</h2>
+            <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+              Data Analytics & Configuration
+            </p>
           </div>
-          <button 
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition-colors"
-          >
-            <i className="fa-solid fa-times text-white text-sm"></i>
-          </button>
+          <div className="flex items-center gap-3">
+            {AuthService.isAuthenticated() && (
+              <div className="text-right mr-4">
+                <p className="text-xs text-green-400">✅ Authenticated</p>
+                <p className="text-[10px] text-zinc-500">
+                  Session: {AuthService.getSessionTimeRemaining()}min remaining
+                </p>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                AuthService.logout();
+                onClose();
+              }}
+              className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded text-xs transition-colors"
+              title="Logout"
+            >
+              <i className="fa-solid fa-sign-out-alt mr-1"></i>
+              Logout
+            </button>
+            <button 
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition-colors"
+            >
+              <i className="fa-solid fa-times text-white text-sm"></i>
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -258,6 +282,34 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                       </div>
                     </div>
                   )}
+
+                  <div className="bg-zinc-800 p-4 rounded-lg">
+                    <h4 className="text-lg font-robust italic text-white mb-3">Debug Information</h4>
+                    <button
+                      onClick={() => {
+                        const debugInfo = (window as any).CalTrakSheets?.getDebugInfo();
+                        if (debugInfo) {
+                          alert(`Last Status: ${debugInfo.status}\nTime: ${debugInfo.lastSent || debugInfo.lastError}\nSession: ${debugInfo.sessionId}\nUser: ${debugInfo.userName || 'N/A'}\nError: ${debugInfo.error || 'None'}`);
+                        } else {
+                          alert('No debug information available. Try using the calculator first.');
+                        }
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-blue-700 transition-colors mr-2"
+                    >
+                      <i className="fa-solid fa-bug mr-2"></i>
+                      Show Debug Info
+                    </button>
+                    <button
+                      onClick={() => {
+                        (window as any).CalTrakSheets?.clearDebugInfo();
+                        alert('Debug information cleared.');
+                      }}
+                      className="px-4 py-2 bg-gray-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-gray-700 transition-colors"
+                    >
+                      <i className="fa-solid fa-trash mr-2"></i>
+                      Clear Debug
+                    </button>
+                  </div>
                 </div>
               </HudCard>
             </div>
