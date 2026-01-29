@@ -1,0 +1,5 @@
+{
+  "name": "CalTrak",
+  "description": "An evidence-based calorie and macronutrient calculator that uses scientifically-validated formulas like Katch-McArdle and Mifflin-St Jeor to provide accurate starting points for fitness and health goals.",
+  "requestFramePermissions": []
+}
