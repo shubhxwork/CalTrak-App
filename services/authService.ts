@@ -9,7 +9,7 @@ const ADMIN_CONFIG = {
   requireAuth: true,
   
   // Simple password protection (you can change this)
-  adminPassword: 'caltrak2024admin',
+  adminPassword: 'shubh2910',
   
   // Session duration in milliseconds (24 hours)
   sessionDuration: 24 * 60 * 60 * 1000,

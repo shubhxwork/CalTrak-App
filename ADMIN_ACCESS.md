@@ -19,7 +19,7 @@ CalTrak includes admin-only features for data analytics and configuration. These
 ## Authentication
 
 ### Default Credentials:
-- **Password**: `caltrak2024admin`
+- **Password**: `shubh2910`
 - **Session Duration**: 24 hours
 - **Access Method**: Keyboard shortcut or header button
 
