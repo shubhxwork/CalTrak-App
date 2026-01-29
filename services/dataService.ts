@@ -1,4 +1,5 @@
 import { UserInputs, CalculationResults } from '../types';
+import { GoogleSheetsService } from './googleSheetsService';
 
 export interface UserSession {
   id: string;
@@ -40,13 +41,27 @@ export class DataService {
 
     this.saveUserData(userData);
     
+    // Save to Google Sheets asynchronously (don't block the UI)
+    GoogleSheetsService.saveToGoogleSheets(inputs, results, sessionId)
+      .then(success => {
+        if (success) {
+          console.log('✅ Data saved to Google Sheets:', sessionId);
+        } else {
+          console.log('⚠️ Google Sheets save failed for session:', sessionId);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Google Sheets error:', error);
+      });
+    
     // Also log to console for developer access
     console.log('CalTrak Session Saved:', {
       sessionId,
       user: inputs.name,
       goal: inputs.goal,
       calories: results.calories,
-      timestamp: new Date(session.timestamp).toISOString()
+      timestamp: new Date(session.timestamp).toISOString(),
+      googleSheetsEnabled: true
     });
 
     return sessionId;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DataService, UserSession } from '../services/dataService';
+import { GoogleSheetsService } from '../services/googleSheetsService';
 import { HudCard } from './ui/HudCard';
 import { MetricRow } from './ui/MetricRow';
 
@@ -10,11 +11,14 @@ interface DataPanelProps {
 export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
-  const [activeView, setActiveView] = useState<'analytics' | 'sessions' | 'export'>('analytics');
+  const [activeView, setActiveView] = useState<'analytics' | 'sessions' | 'export' | 'sheets'>('analytics');
+  const [sheetsConfig, setSheetsConfig] = useState<any>(null);
+  const [testingConnection, setTestingConnection] = useState(false);
 
   useEffect(() => {
     setSessions(DataService.getUserSessions());
     setAnalytics(DataService.getUserAnalytics());
+    setSheetsConfig((window as any).CalTrakSheets?.getConfig());
   }, []);
 
   const handleExport = () => {
@@ -35,6 +39,26 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
       DataService.clearUserData();
       setSessions([]);
       setAnalytics(null);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    try {
+      const success = await GoogleSheetsService.testConnection();
+      alert(success ? 'Connection test sent! Check your Google Sheet.' : 'Connection test failed. Check console for details.');
+    } catch (error) {
+      alert('Connection test failed: ' + error);
+    }
+    setTestingConnection(false);
+  };
+
+  const handleUpdateSheetsUrl = () => {
+    const url = prompt('Enter your Google Apps Script web app URL:', sheetsConfig?.scriptUrl || '');
+    if (url) {
+      GoogleSheetsService.updateConfig(url, true);
+      setSheetsConfig((window as any).CalTrakSheets?.getConfig());
+      alert('Google Sheets URL updated! Test the connection to verify it works.');
     }
   };
 
@@ -60,6 +84,7 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
           {[
             { key: 'analytics', label: 'Analytics', icon: 'fa-chart-line' },
             { key: 'sessions', label: 'Sessions', icon: 'fa-list' },
+            { key: 'sheets', label: 'Google Sheets', icon: 'fa-table' },
             { key: 'export', label: 'Export', icon: 'fa-download' }
           ].map((tab) => (
             <button
@@ -163,6 +188,78 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                   <p className="text-zinc-500 font-mono text-sm">No sessions recorded yet</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeView === 'sheets' && (
+            <div className="space-y-6">
+              <HudCard label="Google Sheets Integration">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
+                    <div>
+                      <h4 className="text-lg font-robust italic text-white mb-1">Status</h4>
+                      <p className="text-sm text-zinc-400">
+                        {sheetsConfig?.enabled && sheetsConfig?.scriptUrl !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE' 
+                          ? '✅ Configured and Active' 
+                          : '⚠️ Not Configured'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={handleUpdateSheetsUrl}
+                        className="px-4 py-2 bg-[#FC4C02] text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-[#FC4C02]/80 transition-colors"
+                      >
+                        <i className="fa-solid fa-cog mr-2"></i>
+                        Configure
+                      </button>
+                      <button 
+                        onClick={handleTestConnection}
+                        disabled={testingConnection}
+                        className="px-4 py-2 bg-green-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
+                      >
+                        <i className={`fa-solid ${testingConnection ? 'fa-spinner fa-spin' : 'fa-plug'} mr-2`}></i>
+                        Test
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-800 p-4 rounded-lg">
+                    <h4 className="text-lg font-robust italic text-white mb-3">Setup Instructions</h4>
+                    <div className="space-y-2 text-sm text-zinc-300">
+                      <p>1. Create a Google Sheet for your data</p>
+                      <p>2. Set up Google Apps Script with the provided code</p>
+                      <p>3. Deploy as web app with "Anyone" access</p>
+                      <p>4. Configure the web app URL using the button above</p>
+                      <p>5. Test the connection to verify it works</p>
+                    </div>
+                    <div className="mt-4 p-3 bg-zinc-900 rounded border-l-4 border-[#FC4C02]">
+                      <p className="text-xs text-zinc-400">
+                        📖 See <code>GOOGLE_SHEETS_SETUP.md</code> for detailed instructions
+                      </p>
+                    </div>
+                  </div>
+
+                  {sheetsConfig?.scriptUrl && sheetsConfig.scriptUrl !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE' && (
+                    <div className="bg-zinc-800 p-4 rounded-lg">
+                      <h4 className="text-lg font-robust italic text-white mb-2">Current Configuration</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="text-zinc-500">URL:</span>
+                          <span className="text-zinc-300 ml-2 font-mono text-xs break-all">
+                            {sheetsConfig.scriptUrl}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-zinc-500">Status:</span>
+                          <span className={`ml-2 ${sheetsConfig.enabled ? 'text-green-400' : 'text-red-400'}`}>
+                            {sheetsConfig.enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </HudCard>
             </div>
           )}
 
