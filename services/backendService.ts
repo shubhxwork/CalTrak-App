@@ -2,10 +2,11 @@ import { UserInputs, CalculationResults } from '../types';
 
 // Backend configuration
 const BACKEND_CONFIG = {
-  // Update this with your deployed backend URL
-  baseUrl: 'http://localhost:3001', // Change to your production URL
-  adminKey: 'shubh2910-admin-key',
-  enabled: true
+  // Use environment variable or fallback to localhost for development
+  baseUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001',
+  adminKey: import.meta.env.VITE_ADMIN_KEY || 'shubh2910-admin-key',
+  enabled: true,
+  type: 'mongodb' // 'file' or 'mongodb'
 };
 
 export interface BackendSession {
@@ -83,10 +84,10 @@ export class BackendService {
     }
   }
 
-  // Get all sessions (admin only)
-  static async getAllSessions(): Promise<BackendSession[]> {
+  // Get all sessions (admin only) with pagination
+  static async getAllSessions(page: number = 1, limit: number = 50): Promise<{sessions: BackendSession[], pagination: any}> {
     try {
-      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/sessions`, {
+      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/sessions?page=${page}&limit=${limit}`, {
         headers: {
           'X-Admin-Key': BACKEND_CONFIG.adminKey
         }
@@ -97,11 +98,14 @@ export class BackendService {
       }
 
       const data = await response.json();
-      return data.sessions || [];
+      return {
+        sessions: data.sessions || [],
+        pagination: data.pagination || {}
+      };
 
     } catch (error) {
       console.error('❌ Failed to fetch sessions:', error);
-      return [];
+      return { sessions: [], pagination: {} };
     }
   }
 
@@ -195,8 +199,64 @@ export class BackendService {
     return {
       baseUrl: BACKEND_CONFIG.baseUrl,
       enabled: BACKEND_CONFIG.enabled,
-      hasAdminKey: !!BACKEND_CONFIG.adminKey
+      hasAdminKey: !!BACKEND_CONFIG.adminKey,
+      type: BACKEND_CONFIG.type
     };
+  }
+
+  // Search sessions (MongoDB only)
+  static async searchSessions(query: {
+    q?: string;
+    goal?: string;
+    country?: string;
+    safetyLevel?: string;
+    limit?: number;
+  }): Promise<BackendSession[]> {
+    try {
+      const params = new URLSearchParams();
+      Object.entries(query).forEach(([key, value]) => {
+        if (value) params.append(key, value.toString());
+      });
+
+      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/search?${params}`, {
+        headers: {
+          'X-Admin-Key': BACKEND_CONFIG.adminKey
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.results || [];
+
+    } catch (error) {
+      console.error('❌ Failed to search sessions:', error);
+      return [];
+    }
+  }
+
+  // Get user-specific sessions (MongoDB only)
+  static async getUserSessions(userName: string, limit: number = 10): Promise<BackendSession[]> {
+    try {
+      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/users/${encodeURIComponent(userName)}/sessions?limit=${limit}`, {
+        headers: {
+          'X-Admin-Key': BACKEND_CONFIG.adminKey
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.sessions || [];
+
+    } catch (error) {
+      console.error('❌ Failed to fetch user sessions:', error);
+      return [];
+    }
   }
 
   // Enable/disable backend

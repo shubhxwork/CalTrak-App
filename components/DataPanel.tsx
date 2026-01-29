@@ -32,11 +32,11 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
   const loadWorldwideData = async () => {
     setLoadingWorldwide(true);
     try {
-      const [sessions, analytics] = await Promise.all([
-        BackendService.getAllSessions(),
+      const [sessionsResponse, analytics] = await Promise.all([
+        BackendService.getAllSessions(1, 50),
         BackendService.getAnalytics()
       ]);
-      setWorldwideData(sessions);
+      setWorldwideData(sessionsResponse.sessions || []);
       setWorldwideAnalytics(analytics);
     } catch (error) {
       console.error('Failed to load worldwide data:', error);
@@ -218,12 +218,12 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                 {worldwideData.length > 0 ? (
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {worldwideData.slice(-20).reverse().map((session, index) => (
-                      <HudCard key={session.id} className="p-4">
+                      <HudCard key={session.sessionId} className="p-4">
                         <div className="flex justify-between items-start mb-4">
                           <div>
                             <h4 className="text-lg font-robust italic text-white">{session.inputs.name}</h4>
                             <p className="text-[10px] font-mono text-zinc-500 uppercase">
-                              {new Date(session.metadata.timestamp).toLocaleString()}
+                              {new Date(session.createdAt).toLocaleString()}
                             </p>
                             <p className="text-[10px] font-mono text-zinc-600">
                               📍 {session.metadata.country} • {session.metadata.ip}
