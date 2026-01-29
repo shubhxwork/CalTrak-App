@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { UserInputs, CalculationResults } from './types';
 import { calculateResults } from './services/calculationService';
+import { DataService } from './services/dataService';
 import InputForm from './components/InputForm';
 import ResultsView from './components/ResultsView';
 import Dashboard from './components/Dashboard';
 import { Insights } from './components/Insights';
+import { DataPanel } from './components/DataPanel';
 import { Logo } from './components/ui/Logo';
 import { NavButton } from './components/ui/NavButton';
 
@@ -16,6 +18,21 @@ const App: React.FC = () => {
   const [inputs, setInputs] = useState<UserInputs | null>(null);
   const [results, setResults] = useState<CalculationResults | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showDataPanel, setShowDataPanel] = useState(false);
+
+  // Keyboard shortcut to open data panel (Ctrl/Cmd + Shift + D)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'D') {
+        event.preventDefault();
+        setShowDataPanel(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleCalculate = (newInputs: UserInputs) => {
     setIsCalculating(true);
@@ -24,6 +41,11 @@ const App: React.FC = () => {
       setInputs(newInputs);
       const res = calculateResults(newInputs);
       setResults(res);
+      
+      // Save user data
+      const savedSessionId = DataService.saveUserSession(newInputs, res);
+      setSessionId(savedSessionId);
+      
       setIsCalculating(false);
       setActiveTab('home');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -33,6 +55,7 @@ const App: React.FC = () => {
   const handleReset = () => {
     setInputs(null);
     setResults(null);
+    setSessionId(null);
     setActiveTab('blueprint');
   };
 
@@ -86,8 +109,18 @@ const App: React.FC = () => {
           <Logo className="w-9 h-9" />
           <h1 className="text-xl font-black italic tracking-tighter uppercase leading-none">CalTrak</h1>
         </button>
-        <div className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] pointer-events-none">
-          {activeTab} module
+        <div className="flex items-center gap-4">
+          <div className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] pointer-events-none">
+            {activeTab} module
+          </div>
+          {/* Developer Data Access Button */}
+          <button
+            onClick={() => setShowDataPanel(true)}
+            className="w-8 h-8 rounded-full bg-zinc-800/50 hover:bg-zinc-700 flex items-center justify-center transition-colors opacity-30 hover:opacity-100"
+            title="Data Analytics (Ctrl+Shift+D)"
+          >
+            <i className="fa-solid fa-chart-line text-xs text-zinc-400"></i>
+          </button>
         </div>
       </header>
 
@@ -122,6 +155,11 @@ const App: React.FC = () => {
           label="Insights" 
         />
       </nav>
+
+      {/* Data Panel Modal */}
+      {showDataPanel && (
+        <DataPanel onClose={() => setShowDataPanel(false)} />
+      )}
     </div>
   );
 };
