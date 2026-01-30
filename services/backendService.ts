@@ -2,12 +2,23 @@ import { UserInputs, CalculationResults } from '../types';
 
 // Backend configuration
 const BACKEND_CONFIG = {
-  // Use environment variable or fallback to localhost for development
-  baseUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001',
-  adminKey: import.meta.env.VITE_ADMIN_KEY || 'shubh2910-admin-key',
+  // Use environment variable or fallback to production URL
+  baseUrl: import.meta.env.VITE_BACKEND_URL || 'https://caltrak-app-production.up.railway.app',
+  adminKey: import.meta.env.VITE_ADMIN_KEY || 'admin-96161873b9d2110e52fc7929495710c62d1c222aab03e91f63547fb04520f84d',
   enabled: true,
   type: 'mongodb' // 'file' or 'mongodb'
 };
+
+// Debug logging for production
+console.log('🔧 Backend Config:', {
+  baseUrl: BACKEND_CONFIG.baseUrl,
+  hasAdminKey: !!BACKEND_CONFIG.adminKey,
+  isProd: import.meta.env.PROD,
+  envVars: {
+    VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
+    hasVITE_ADMIN_KEY: !!import.meta.env.VITE_ADMIN_KEY
+  }
+});
 
 // Security warning for production
 if (import.meta.env.PROD && import.meta.env.VITE_ADMIN_KEY) {
