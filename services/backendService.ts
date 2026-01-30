@@ -45,7 +45,7 @@ export interface BackendAnalytics {
 
 export class BackendService {
   
-  // Save user session to backend
+  // Save user session to backend with simple timeout
   static async saveSession(inputs: UserInputs, results: CalculationResults): Promise<string | null> {
     if (!BACKEND_CONFIG.enabled) {
       console.log('🔌 Backend service disabled');
@@ -58,6 +58,10 @@ export class BackendService {
         url: `${BACKEND_CONFIG.baseUrl}/api/sessions`
       });
 
+      // Add simple timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds
+
       const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/sessions`, {
         method: 'POST',
         headers: {
@@ -66,8 +70,11 @@ export class BackendService {
         body: JSON.stringify({
           inputs,
           results
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
