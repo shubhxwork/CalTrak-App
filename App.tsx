@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showDataPanel, setShowDataPanel] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAboutUs, setShowAboutUs] = useState(false);
 
   // Keyboard shortcut to open data panel (Ctrl/Cmd + Shift + D)
   useEffect(() => {
@@ -30,6 +31,11 @@ const App: React.FC = () => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'D') {
         event.preventDefault();
         handleDataPanelAccess();
+      }
+      // About Us shortcut (Ctrl/Cmd + Shift + A)
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'A') {
+        event.preventDefault();
+        setShowAboutUs(true);
       }
     };
 
@@ -133,6 +139,15 @@ const App: React.FC = () => {
           <div className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] pointer-events-none">
             {activeTab} module
           </div>
+          {/* About Us Button */}
+          <button
+            onClick={() => setShowAboutUs(true)}
+            className="px-3 py-1.5 bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-full text-xs font-mono uppercase tracking-widest transition-all"
+            title="About CalTrak (Cmd+Shift+A on Mac, Ctrl+Shift+A on Windows)"
+          >
+            <i className="fa-solid fa-info-circle mr-1"></i>
+            About
+          </button>
           {/* Developer Data Access Button */}
           <button
             onClick={handleDataPanelAccess}
@@ -187,6 +202,89 @@ const App: React.FC = () => {
           onLogin={handleAdminLogin}
           onCancel={handleAdminLoginCancel}
         />
+      )}
+
+      {/* About Us Modal */}
+      {showAboutUs && (
+        <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#FC4C02] to-[#FC4C02]/80 p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-black/20 rounded-full flex items-center justify-center">
+                <i className="fa-solid fa-heart text-2xl text-white"></i>
+              </div>
+              <h2 className="text-2xl font-robust italic text-black uppercase mb-2">About CalTrak</h2>
+              <p className="text-sm text-black/80">Precision Nutrition Calculator</p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              <div className="text-center">
+                <h3 className="text-lg font-robust italic text-white mb-3">Developed by RedWhisk</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed mb-6">
+                  CalTrak is a precision nutrition calculator designed to provide accurate macro calculations 
+                  and personalized nutrition guidance. Built with cutting-edge algorithms and a focus on 
+                  user experience.
+                </p>
+              </div>
+
+              {/* Features */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Features</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center gap-3 text-sm text-zinc-300">
+                    <i className="fa-solid fa-calculator text-[#FC4C02] w-4"></i>
+                    <span>Advanced macro calculations</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-zinc-300">
+                    <i className="fa-solid fa-target text-[#FC4C02] w-4"></i>
+                    <span>Goal-specific recommendations</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-zinc-300">
+                    <i className="fa-solid fa-chart-line text-[#FC4C02] w-4"></i>
+                    <span>Progress tracking & milestones</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-zinc-300">
+                    <i className="fa-solid fa-utensils text-[#FC4C02] w-4"></i>
+                    <span>Personalized food recommendations</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Social */}
+              <div className="text-center pt-4 border-t border-zinc-800">
+                <p className="text-xs text-zinc-500 mb-4">Follow us for updates</p>
+                <a
+                  href="https://www.instagram.com/reddwhisk/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-black text-sm uppercase tracking-widest hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
+                >
+                  <i className="fa-brands fa-instagram text-lg"></i>
+                  @reddwhisk
+                </a>
+              </div>
+
+              {/* Version */}
+              <div className="text-center pt-4 border-t border-zinc-800">
+                <p className="text-xs text-zinc-600 font-mono">
+                  CalTrak v2.0 • Built with ❤️ by RedWhisk
+                </p>
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <div className="p-6 pt-0">
+              <button
+                onClick={() => setShowAboutUs(false)}
+                className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-full font-black text-xs uppercase tracking-widest transition-all"
+              >
+                <i className="fa-solid fa-times mr-2"></i>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
