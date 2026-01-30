@@ -533,4 +533,5 @@ app.listen(PORT, () => {
   console.log(`🔐 Admin key: ${ADMIN_KEY}`);
   console.log(`🗄️  Database: ${MONGODB_URI.includes('mongodb+srv') ? 'MongoDB Atlas' : 'Local MongoDB'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🗑️  Delete endpoints: /api/sessions/delete, /api/sessions/delete-all`);
 });
