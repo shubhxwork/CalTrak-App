@@ -13,8 +13,14 @@ const ADMIN_KEY = process.env.ADMIN_KEY || 'shubh2910-admin-key';
 
 // Security middleware
 app.use(helmet());
+
+// CORS configuration - handle multiple origins properly
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['*'];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: corsOrigins,
   credentials: true
 }));
 
