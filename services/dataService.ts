@@ -42,6 +42,9 @@ export class DataService {
 
     this.saveUserData(userData);
     
+    // Store session ID for feedback
+    localStorage.setItem('lastSessionId', sessionId);
+    
     // Save to backend (worldwide data collection)
     BackendService.saveSession(inputs, results)
       .then(backendSessionId => {

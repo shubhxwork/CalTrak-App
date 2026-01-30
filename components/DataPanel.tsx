@@ -9,7 +9,7 @@ interface DataPanelProps {
 }
 
 export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
-  const [activeView, setActiveView] = useState<'worldwide' | 'sheets' | 'manage'>('worldwide');
+  const [activeView, setActiveView] = useState<'worldwide' | 'sheets' | 'manage' | 'feedback'>('worldwide');
   const [testingConnection, setTestingConnection] = useState(false);
   const [worldwideData, setWorldwideData] = useState<BackendSession[]>([]);
   const [worldwideAnalytics, setWorldwideAnalytics] = useState<BackendAnalytics | null>(null);
@@ -19,11 +19,17 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [feedbackData, setFeedbackData] = useState<any[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<any>({});
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
 
   useEffect(() => {
     // Load worldwide data on component mount
     loadWorldwideData();
-  }, []);
+    if (activeView === 'feedback') {
+      loadFeedbackData();
+    }
+  }, [activeView]);
 
   const loadWorldwideData = async () => {
     setLoadingWorldwide(true);
@@ -38,6 +44,18 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
       console.error('Failed to load worldwide data:', error);
     }
     setLoadingWorldwide(false);
+  };
+
+  const loadFeedbackData = async () => {
+    setLoadingFeedback(true);
+    try {
+      const feedbackResponse = await BackendService.getAllFeedback(1, 50);
+      setFeedbackData(feedbackResponse.feedback || []);
+      setFeedbackStats(feedbackResponse.stats || {});
+    } catch (error) {
+      console.error('Failed to load feedback data:', error);
+    }
+    setLoadingFeedback(false);
   };
 
   const handleExportToSheets = async () => {
@@ -283,7 +301,8 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
           {[
             { key: 'worldwide', label: 'Worldwide Data', icon: 'fa-globe' },
             { key: 'sheets', label: 'Export to Sheets', icon: 'fa-table' },
-            { key: 'manage', label: 'Data Management', icon: 'fa-trash-can' }
+            { key: 'manage', label: 'Data Management', icon: 'fa-trash-can' },
+            { key: 'feedback', label: 'User Feedback', icon: 'fa-comments' }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -684,6 +703,114 @@ export const DataPanel: React.FC<DataPanelProps> = ({ onClose }) => {
                     <i className="fa-solid fa-database text-4xl text-zinc-600 mb-4"></i>
                     <p className="text-zinc-500 font-mono text-sm">
                       {loadingWorldwide ? 'Loading worldwide data...' : 'No worldwide data available'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeView === 'feedback' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-robust italic text-white uppercase">💬 User Feedback & Recommendations</h3>
+                <button
+                  onClick={loadFeedbackData}
+                  disabled={loadingFeedback}
+                  className="px-4 py-2 bg-[#FC4C02] text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-[#FC4C02]/80 transition-colors disabled:opacity-50"
+                >
+                  <i className={`fa-solid ${loadingFeedback ? 'fa-spinner fa-spin' : 'fa-refresh'} mr-2`}></i>
+                  Refresh
+                </button>
+              </div>
+
+              {/* Feedback Stats */}
+              {feedbackStats.totalFeedback > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <HudCard label="Feedback Overview">
+                    <div className="space-y-4">
+                      <MetricRow label="Total Feedback" value={feedbackStats.totalFeedback.toString()} highlight />
+                      <MetricRow label="Average Rating" value={`${feedbackStats.averageRating}/5 ⭐`} />
+                      <div className="text-sm">
+                        <span className="text-zinc-500">Rating Distribution:</span>
+                        <div className="mt-2 space-y-1">
+                          {[5, 4, 3, 2, 1].map(rating => (
+                            <div key={rating} className="flex items-center gap-2">
+                              <span className="text-xs w-4">{rating}⭐</span>
+                              <div className="flex-1 bg-zinc-800 rounded-full h-2">
+                                <div 
+                                  className="bg-[#FC4C02] h-2 rounded-full transition-all"
+                                  style={{ 
+                                    width: `${((feedbackStats.ratingDistribution?.[rating] || 0) / feedbackStats.totalFeedback) * 100}%` 
+                                  }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-zinc-400 w-8">
+                                {feedbackStats.ratingDistribution?.[rating] || 0}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </HudCard>
+                </div>
+              )}
+
+              {/* Feedback List */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-robust italic text-white">Recent User Feedback</h4>
+                
+                {feedbackData.length > 0 ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {feedbackData.map((feedback, index) => (
+                      <HudCard key={feedback.sessionId} className="p-4">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="text-lg font-robust italic text-white">{feedback.inputs.name}</h4>
+                            <p className="text-[10px] font-mono text-zinc-500 uppercase">
+                              {new Date(feedback.feedback.timestamp).toLocaleString()}
+                            </p>
+                            <p className="text-[10px] font-mono text-zinc-600">
+                              Goal: {feedback.inputs.goal} • {feedback.results.calories} KCAL
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 mb-2">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <i 
+                                  key={star}
+                                  className={`fa-solid fa-star text-sm ${
+                                    star <= feedback.feedback.rating 
+                                      ? 'text-[#FC4C02]' 
+                                      : 'text-zinc-600'
+                                  }`}
+                                ></i>
+                              ))}
+                              <span className="text-sm text-zinc-400 ml-2">
+                                ({feedback.feedback.rating}/5)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-zinc-800 p-4 rounded-lg border-l-4 border-[#FC4C02]">
+                          <h5 className="text-sm font-bold text-white mb-2">User Recommendation:</h5>
+                          <p className="text-sm text-zinc-300 leading-relaxed">
+                            "{feedback.feedback.recommendation}"
+                          </p>
+                        </div>
+                      </HudCard>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <i className="fa-solid fa-comments text-4xl text-zinc-600 mb-4"></i>
+                    <p className="text-zinc-500 font-mono text-sm">
+                      {loadingFeedback ? 'Loading feedback...' : 'No user feedback available yet'}
+                    </p>
+                    <p className="text-zinc-600 font-mono text-xs mt-2">
+                      Users can submit feedback after generating their nutrition blueprint
                     </p>
                   </div>
                 )}

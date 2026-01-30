@@ -314,6 +314,145 @@ app.get('/api/users/:userName/sessions', async (req, res) => {
   }
 });
 
+// Update session with feedback
+app.post('/api/sessions/:sessionId/feedback', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { rating, recommendation } = req.body;
+
+    // Validate feedback data
+    if (!rating || !recommendation) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: rating and recommendation'
+      });
+    }
+
+    if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        error: 'Rating must be a number between 1 and 5'
+      });
+    }
+
+    if (typeof recommendation !== 'string' || recommendation.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Recommendation must be a non-empty string'
+      });
+    }
+
+    // Sanitize recommendation
+    const sanitizedRecommendation = recommendation.trim().substring(0, 1000);
+
+    console.log('📝 Feedback received for session:', sessionId, {
+      rating,
+      recommendationLength: sanitizedRecommendation.length
+    });
+
+    // Update session with feedback
+    const updatedSession = await Session.findOneAndUpdate(
+      { sessionId },
+      {
+        feedback: {
+          rating,
+          recommendation: sanitizedRecommendation,
+          timestamp: new Date()
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedSession) {
+      return res.status(404).json({
+        success: false,
+        error: 'Session not found'
+      });
+    }
+
+    console.log('✅ Feedback saved for session:', sessionId);
+
+    res.json({
+      success: true,
+      message: 'Feedback saved successfully',
+      sessionId
+    });
+
+  } catch (error) {
+    console.error('❌ Error saving feedback:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error: ' + error.message
+    });
+  }
+});
+
+// Get all feedback (admin only)
+app.get('/api/feedback', async (req, res) => {
+  try {
+    // Admin authentication
+    const adminKey = req.get('X-Admin-Key');
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid admin key' });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    // Get sessions with feedback
+    const sessionsWithFeedback = await Session.find({ feedback: { $exists: true } })
+      .sort({ 'feedback.timestamp': -1 })
+      .skip(skip)
+      .limit(limit)
+      .select('sessionId inputs.name inputs.goal results.calories feedback createdAt');
+
+    const totalFeedback = await Session.countDocuments({ feedback: { $exists: true } });
+    const totalPages = Math.ceil(totalFeedback / limit);
+
+    // Calculate feedback stats
+    const feedbackStats = await Session.aggregate([
+      { $match: { feedback: { $exists: true } } },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$feedback.rating' },
+          totalFeedback: { $sum: 1 },
+          ratingDistribution: {
+            $push: '$feedback.rating'
+          }
+        }
+      }
+    ]);
+
+    const stats = feedbackStats[0] || { averageRating: 0, totalFeedback: 0, ratingDistribution: [] };
+    const ratingCounts = stats.ratingDistribution.reduce((acc, rating) => {
+      acc[rating] = (acc[rating] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      feedback: sessionsWithFeedback,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalFeedback,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      },
+      stats: {
+        averageRating: Math.round(stats.averageRating * 10) / 10,
+        totalFeedback: stats.totalFeedback,
+        ratingDistribution: ratingCounts
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching feedback:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Export all data as CSV (admin only)
 app.get('/api/export/csv', async (req, res) => {
   try {

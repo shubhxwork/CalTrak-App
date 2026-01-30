@@ -186,6 +186,74 @@ export class BackendService {
     }
   }
 
+  // Submit user feedback
+  static async submitFeedback(sessionId: string, rating: number, recommendation: string): Promise<boolean> {
+    try {
+      console.log('📝 Submitting feedback...', { sessionId, rating });
+
+      // Add timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/sessions/${sessionId}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rating,
+          recommendation
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ Feedback submitted successfully');
+        return true;
+      } else {
+        throw new Error(data.error || 'Unknown error');
+      }
+
+    } catch (error) {
+      console.error('❌ Failed to submit feedback:', error);
+      return false;
+    }
+  }
+
+  // Get all feedback (admin only)
+  static async getAllFeedback(page: number = 1, limit: number = 50): Promise<{feedback: any[], pagination: any, stats: any}> {
+    try {
+      const response = await fetch(`${BACKEND_CONFIG.baseUrl}/api/feedback?page=${page}&limit=${limit}`, {
+        headers: {
+          'X-Admin-Key': BACKEND_CONFIG.adminKey
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        feedback: data.feedback || [],
+        pagination: data.pagination || {},
+        stats: data.stats || {}
+      };
+
+    } catch (error) {
+      console.error('❌ Failed to fetch feedback:', error);
+      return { feedback: [], pagination: {}, stats: {} };
+    }
+  }
+
   // Test backend connection
   static async testConnection(): Promise<boolean> {
     try {

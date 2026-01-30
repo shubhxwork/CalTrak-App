@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalculationResults, UserInputs, DietaryPreference, Milestone } from '../types';
 import { FOOD_RECOMMENDATIONS, MacroFood } from '../constants';
+import { BackendService } from '../services/backendService';
 import { HudCard } from './ui/HudCard';
 import { Badge } from './ui/Badge';
 import { MetricRow } from './ui/MetricRow';
@@ -15,6 +16,13 @@ interface ResultsViewProps {
 const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) => {
   const [macros, setMacros] = useState({ p: results.proteinPct, c: results.carbsPct, f: results.fatPct });
   const [dietaryPreference, setDietaryPreference] = useState<DietaryPreference>('non-veg');
+  
+  // Feedback state
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [recommendation, setRecommendation] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [displayCals, setDisplayCals] = useState(0);
 
   useEffect(() => {
@@ -40,6 +48,31 @@ const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) =
   const waterOutput = useMemo(() => {
     return `${results.waterLiters.toFixed(2)} LITERS`;
   }, [results.waterLiters]);
+
+  // Handle feedback submission
+  const handleFeedbackSubmit = async () => {
+    if (rating === 0 || recommendation.trim().length === 0) {
+      alert('Please provide both a rating and recommendation');
+      return;
+    }
+
+    setSubmittingFeedback(true);
+    
+    // Get session ID from localStorage or generate one
+    const sessionId = localStorage.getItem('lastSessionId') || `temp_${Date.now()}`;
+    
+    const success = await BackendService.submitFeedback(sessionId, rating, recommendation);
+    
+    if (success) {
+      setFeedbackSubmitted(true);
+      setShowFeedback(false);
+      alert('Thank you for your feedback! 🙏');
+    } else {
+      alert('Failed to submit feedback. Please try again.');
+    }
+    
+    setSubmittingFeedback(false);
+  };
 
   const adjustMacro = (key: 'p' | 'c' | 'f', value: number) => {
     const diff = value - macros[key];
@@ -183,6 +216,115 @@ const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) =
             color="text-zinc-400"
           />
         </div>
+      </section>
+
+      {/* Feedback Section */}
+      <section className="space-y-8 no-print">
+        <div className="text-center">
+          <h3 className="text-2xl font-robust italic text-white uppercase mb-2">Share Your Experience</h3>
+          <p className="text-sm text-zinc-400">Help us improve CalTrak for everyone</p>
+        </div>
+
+        {!feedbackSubmitted ? (
+          <HudCard className="p-8">
+            {!showFeedback ? (
+              <div className="text-center">
+                <button
+                  onClick={() => setShowFeedback(true)}
+                  className="px-8 py-4 bg-[#FC4C02] text-black font-black text-sm uppercase tracking-widest rounded-full hover:bg-[#FC4C02]/80 transition-all"
+                >
+                  <i className="fa-solid fa-star mr-2"></i>
+                  Rate & Recommend
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Rating */}
+                <div>
+                  <label className="block text-sm font-mono text-zinc-400 uppercase tracking-widest mb-4">
+                    How would you rate your CalTrak experience?
+                  </label>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setRating(star)}
+                        className={`text-3xl transition-all ${
+                          star <= rating 
+                            ? 'text-[#FC4C02] hover:text-[#FC4C02]/80' 
+                            : 'text-zinc-600 hover:text-zinc-400'
+                        }`}
+                      >
+                        <i className="fa-solid fa-star"></i>
+                      </button>
+                    ))}
+                  </div>
+                  {rating > 0 && (
+                    <p className="text-center text-sm text-zinc-400 mt-2">
+                      {rating === 1 && "We'd love to improve!"}
+                      {rating === 2 && "Thanks for the feedback!"}
+                      {rating === 3 && "Good to know!"}
+                      {rating === 4 && "Great to hear!"}
+                      {rating === 5 && "Awesome! 🎉"}
+                    </p>
+                  )}
+                </div>
+
+                {/* Recommendation */}
+                <div>
+                  <label className="block text-sm font-mono text-zinc-400 uppercase tracking-widest mb-4">
+                    Any recommendations or suggestions?
+                  </label>
+                  <textarea
+                    value={recommendation}
+                    onChange={(e) => setRecommendation(e.target.value)}
+                    placeholder="Share your thoughts, suggestions, or what you'd like to see improved..."
+                    className="w-full h-32 bg-zinc-800 border border-zinc-700 rounded-lg p-4 text-white placeholder-zinc-500 focus:border-[#FC4C02] focus:outline-none resize-none"
+                    maxLength={1000}
+                  />
+                  <div className="text-right text-xs text-zinc-500 mt-1">
+                    {recommendation.length}/1000 characters
+                  </div>
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setShowFeedback(false)}
+                    className="flex-1 py-3 bg-zinc-800 text-zinc-400 rounded-full font-black text-xs uppercase tracking-widest hover:text-white transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleFeedbackSubmit}
+                    disabled={rating === 0 || recommendation.trim().length === 0 || submittingFeedback}
+                    className="flex-1 py-3 bg-[#FC4C02] text-black rounded-full font-black text-xs uppercase tracking-widest hover:bg-[#FC4C02]/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingFeedback ? (
+                      <>
+                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-paper-plane mr-2"></i>
+                        Submit Feedback
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </HudCard>
+        ) : (
+          <HudCard className="p-8">
+            <div className="text-center">
+              <i className="fa-solid fa-check-circle text-4xl text-green-500 mb-4"></i>
+              <h4 className="text-lg font-robust italic text-white mb-2">Thank You!</h4>
+              <p className="text-sm text-zinc-400">Your feedback helps us make CalTrak better for everyone.</p>
+            </div>
+          </HudCard>
+        )}
       </section>
 
       <footer className="flex flex-col md:flex-row gap-4 pt-10 no-print">

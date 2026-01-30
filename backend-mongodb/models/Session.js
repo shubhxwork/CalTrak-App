@@ -72,6 +72,13 @@ const metadataSchema = new mongoose.Schema({
   browser: { type: String, default: 'Unknown' }
 }, { _id: false });
 
+// Feedback Schema
+const feedbackSchema = new mongoose.Schema({
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  recommendation: { type: String, required: true, maxlength: 1000 },
+  timestamp: { type: Date, default: Date.now }
+}, { _id: false });
+
 // Main Session Schema
 const sessionSchema = new mongoose.Schema({
   sessionId: { 
@@ -91,6 +98,10 @@ const sessionSchema = new mongoose.Schema({
   metadata: { 
     type: metadataSchema, 
     required: true 
+  },
+  feedback: {
+    type: feedbackSchema,
+    required: false
   },
   createdAt: { 
     type: Date, 

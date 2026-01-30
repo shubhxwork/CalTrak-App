@@ -27,6 +27,12 @@ export interface UserInputs {
   weeklyRate?: number; // kg or lbs per week
 }
 
+export interface UserFeedback {
+  rating: number; // 1-5 stars
+  recommendation: string;
+  timestamp: number;
+}
+
 export interface CalculationResults {
   calories: number;
   proteinG: number;
