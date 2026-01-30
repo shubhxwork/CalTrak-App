@@ -98,7 +98,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) =
   const currentRecommendations = FOOD_RECOMMENDATIONS[dietaryPreference];
 
   return (
-    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-1000 pb-20 print:space-y-6">
+    <>
+      <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-1000 pb-20 print:space-y-6">
       <header className="text-center relative py-12">
         <div className="absolute inset-0 scanner-line no-print"></div>
         <div className={`mx-auto w-fit px-8 py-3 rounded-2xl border mb-6 transition-all ${getSafetyColor()}`}>
@@ -351,6 +352,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) =
         onClose={() => setShowDietMaker(false)}
       />
     )}
+    </>
   );
 };
 
