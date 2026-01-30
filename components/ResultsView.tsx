@@ -6,6 +6,7 @@ import { BackendService } from '../services/backendService';
 import { HudCard } from './ui/HudCard';
 import { Badge } from './ui/Badge';
 import { MetricRow } from './ui/MetricRow';
+import DietMaker from './DietMaker';
 
 interface ResultsViewProps {
   results: CalculationResults;
@@ -24,6 +25,9 @@ const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) =
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [displayCals, setDisplayCals] = useState(0);
+  
+  // Diet Maker state
+  const [showDietMaker, setShowDietMaker] = useState(false);
 
   useEffect(() => {
     setMacros({ p: results.proteinPct, c: results.carbsPct, f: results.fatPct });
@@ -329,9 +333,24 @@ const ResultsView: React.FC<ResultsViewProps> = ({ results, inputs, onReset }) =
 
       <footer className="flex flex-col md:flex-row gap-4 pt-10 no-print">
         <button onClick={() => window.print()} className="flex-1 py-6 bg-white text-black rounded-full font-black text-[12px] uppercase tracking-widest shadow-2xl hover:bg-zinc-200 transition-all"><i className="fa-solid fa-file-pdf mr-2"></i> EXPORT DOSSIER</button>
+        <button 
+          onClick={() => setShowDietMaker(true)}
+          className="flex-1 py-6 bg-[#FC4C02] text-black rounded-full font-black text-[12px] uppercase tracking-widest hover:bg-[#FC4C02]/80 transition-all"
+        >
+          <i className="fa-solid fa-utensils mr-2"></i> CREATE DIET PLAN
+        </button>
         <button onClick={onReset} className="flex-1 py-6 bg-zinc-900 border border-zinc-800 text-zinc-500 rounded-full font-black text-[12px] uppercase tracking-widest hover:text-white transition-all"><i className="fa-solid fa-rotate-left mr-2"></i> RE-IDENTIFY</button>
       </footer>
     </div>
+
+    {/* Diet Maker Modal */}
+    {showDietMaker && (
+      <DietMaker 
+        results={results}
+        inputs={inputs}
+        onClose={() => setShowDietMaker(false)}
+      />
+    )}
   );
 };
 
