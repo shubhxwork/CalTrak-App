@@ -22,7 +22,7 @@ const userInputsSchema = new mongoose.Schema({
     index: true 
   },
   targetWeight: { type: Number, min: 20, max: 500 },
-  weeklyRate: { type: Number, min: 0.1, max: 2 }
+  weeklyRate: { type: Number, min: 0, max: 2 }
 }, { _id: false });
 
 // Calculation Results Schema
