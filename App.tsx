@@ -12,6 +12,7 @@ import { DataPanel } from './components/DataPanel';
 import { AdminLogin } from './components/AdminLogin';
 import { Logo } from './components/ui/Logo';
 import { NavButton } from './components/ui/NavButton';
+import { FloatingNavDock } from './components/ui/FloatingNavDock';
 
 type Tab = 'home' | 'blueprint' | 'insights';
 
@@ -24,6 +25,11 @@ const App: React.FC = () => {
   const [showDataPanel, setShowDataPanel] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showAboutUs, setShowAboutUs] = useState(false);
+
+  // Handle navigation from floating dock
+  const handleNavigate = (sectionId: string) => {
+    setActiveTab(sectionId as Tab);
+  };
 
   // Keyboard shortcut to open data panel (Ctrl/Cmd + Shift + D)
   useEffect(() => {
@@ -109,7 +115,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white pb-24 font-sans selection:bg-[#FC4C02]/40">
+    <div className="min-h-screen bg-black text-white pb-0 md:pb-24 font-sans selection:bg-[#FC4C02]/40">
       {/* Bio-Scan Overlay */}
       {isCalculating && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
@@ -166,10 +172,18 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Persistent Navigation Dock */}
+      {/* Mobile Navigation - Floating Glass Dock */}
+      <div className="block md:hidden">
+        <FloatingNavDock
+          activeSection={activeTab}
+          onNavigate={handleNavigate}
+        />
+      </div>
+
+      {/* Desktop Navigation - Original Dock */}
       <nav 
         role="navigation"
-        className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-lg border-t border-zinc-900 px-8 py-4 flex justify-between items-center no-print z-50 shadow-2xl"
+        className="hidden md:flex fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-lg border-t border-zinc-900 px-8 py-4 justify-between items-center no-print z-50 shadow-2xl"
       >
         <NavButton 
           active={activeTab === 'home'} 
