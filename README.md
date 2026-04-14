@@ -1,3 +1,136 @@
+# 🚀 CalTrak-App
+
+> A modular nutrition planning application built using layered architecture, OOP, and SOLID principles.
+
+---
+
+## 🧠 Overview
+
+CalTrak-App is not just another calorie calculator — it’s a well-architected system that separates concerns across layers, making it easy to scale, test, and extend.
+
+### The project demonstrates:
+
+- Clean Architecture principles  
+- Object-Oriented Design  
+- Dependency Inversion & Abstraction  
+- Real-world frontend state management  
+
+---
+
+## 🏗️ Architecture
+
+The application follows a layered architecture:
+
+- **UI (React Components)**  
+- **Controllers (Business Logic)**  
+- **Services (Interfaces & Implementations)**  
+- **Data Layer (LocalStorage / Remote APIs)**  
+
+---
+
+## 🧩 Core Concepts
+
+### 🔹 Models (OOP + Encapsulation)
+
+- **Macro**
+  - Handles calorie calculations  
+  - Percentage distribution  
+  - `rebalanceTo()` for dynamic adjustments  
+
+- **UserProfile**
+  - Normalizes user data (kg, cm, lbm)  
+  - Acts as a core domain entity  
+
+- **NutritionPlan**
+  - Aggregate root  
+  - `toLegacyResults()` for backward compatibility  
+
+---
+
+### 🔹 Controllers (Business Logic Layer)
+
+- **NutritionController**
+  - Refactored `calculateResults()` into:
+    - `calcBMR()`  
+    - `calcTDEE()`  
+    - `calcMacros()`  
+    - `buildMilestones()`  
+    - `buildTimeline()`  
+
+- **SessionController**
+  - Manages session persistence  
+  - Coordinates local + remote storage  
+
+---
+
+### 🔹 Services (Dependency Inversion)
+
+- **Interfaces**
+  - `ISessionRepository`  
+  - `IRemoteSessionService`  
+
+- **Implementations**
+  - `LocalSessionRepository` → localStorage  
+  - `MongoRemoteService` → MongoDB  
+  - `SheetsRemoteService` → Google Sheets  
+
+---
+
+### 🔹 Store (Global State)
+
+- Built using Zustand  
+- Replaces multiple `useState` calls  
+- Eliminates prop drilling  
+- Uses Singleton pattern  
+
+---
+
+### 🔹 Hooks (Reusable Logic)
+
+- `useCalculation` → calculate → save → navigate  
+- `useAdminAccess` → authentication-based access  
+- `useKeyboardShortcuts` → global shortcut handling  
+
+---
+
+### 🔹 Bootstrap (Composition Root)
+
+- Central place for dependency wiring  
+- Uses Factory Pattern  
+- Easily swap implementations without changing core logic  
+
+---
+
+## ✨ Key Features
+
+- Advanced nutrition calculation (BMR, TDEE, macros)  
+- Clean layered architecture  
+- Pluggable storage system  
+- Optimized global state management  
+- Modular and scalable design  
+
+---
+
+## 🛠️ Tech Stack
+
+- React + TypeScript  
+- Zustand  
+- SOLID + OOP Architecture  
+- LocalStorage + Remote APIs  
+
+---
+
+## 📉 Refactoring Highlights
+
+- Reduced `App.tsx` from 200+ lines → ~60 lines  
+- Eliminated prop drilling  
+- Modularized business logic  
+- Extracted reusable hooks and utilities  
+
+---
+
+---
+
 ## Backend (Railway + MongoDB Atlas)
 
 The backend is in `backend/` and runs as an Express server on Railway.
