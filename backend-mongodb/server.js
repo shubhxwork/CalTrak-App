@@ -42,20 +42,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB connection
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log('✅ Connected to MongoDB');
-  console.log(`📊 Database: ${mongoose.connection.name}`);
-})
-.catch((error) => {
-  console.error('❌ MongoDB connection error:', error);
-  process.exit(1);
-});
-
 // Helper function to extract device info
 function extractDeviceInfo(userAgent) {
   const ua = userAgent.toLowerCase();
@@ -658,6 +644,32 @@ app.use((req, res) => {
   });
 });
 
+// MongoDB connection — listen only after DB is ready
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    console.log(`📊 Database: ${mongoose.connection.name}`);
+
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 CalTrak MongoDB Backend running on port ${PORT}`);
+      console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔐 Admin key: ${ADMIN_KEY}`);
+      console.log(`🗄️  Database: ${MONGODB_URI.includes('mongodb+srv') ? 'MongoDB Atlas' : 'Local MongoDB'}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🗑️  Delete endpoints: /api/sessions/delete, /api/sessions/delete-all`);
+    });
+
+    server.on('error', (err) => {
+      console.error('❌ HTTP server error:', err);
+      process.exit(1);
+    });
+  })
+  .catch((error) => {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  });
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🔄 SIGTERM received, shutting down gracefully...');
@@ -669,14 +681,4 @@ process.on('SIGINT', async () => {
   console.log('🔄 SIGINT received, shutting down gracefully...');
   await mongoose.connection.close();
   process.exit(0);
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 CalTrak MongoDB Backend running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔐 Admin key: ${ADMIN_KEY}`);
-  console.log(`🗄️  Database: ${MONGODB_URI.includes('mongodb+srv') ? 'MongoDB Atlas' : 'Local MongoDB'}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🗑️  Delete endpoints: /api/sessions/delete, /api/sessions/delete-all`);
 });
