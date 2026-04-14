@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: caltrak-backend
+    env: docker
+    rootDir: backend-mongodb
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # Set these in Render dashboard (do not commit real values):
+      - key: MONGODB_URI
+        sync: false
+      - key: ADMIN_KEY
+        sync: false
+      # Comma-separated origins, e.g. "https://your-frontend.vercel.app,http://localhost:5173"
+      - key: CORS_ORIGIN
+        sync: false

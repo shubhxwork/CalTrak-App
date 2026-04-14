@@ -1,13 +1,28 @@
 import { UserInputs, CalculationResults } from '../types';
 
+function getDefaultBackendBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_BACKEND_URL;
+  if (fromEnv && typeof fromEnv === 'string' && fromEnv.trim().length > 0) return fromEnv.trim();
+
+  // Dev convenience: if not configured, assume local backend.
+  if (import.meta.env.DEV) return 'http://localhost:3001';
+
+  // Prod must be explicitly configured (no hardcoded host).
+  return '';
+}
+
 // Backend configuration
 const BACKEND_CONFIG = {
-  // Use environment variable or fallback to production URL
-  baseUrl: import.meta.env.VITE_BACKEND_URL || 'https://caltrak-app-production.up.railway.app',
-  adminKey: import.meta.env.VITE_ADMIN_KEY || 'admin-96161873b9d2110e52fc7929495710c62d1c222aab03e91f63547fb04520f84d',
+  baseUrl: getDefaultBackendBaseUrl(),
+  adminKey: (import.meta.env.VITE_ADMIN_KEY || '').trim(),
   enabled: true,
   type: 'mongodb' // 'file' or 'mongodb'
 };
+
+// If production build has no configured backend URL, disable backend calls.
+if (import.meta.env.PROD && !BACKEND_CONFIG.baseUrl) {
+  BACKEND_CONFIG.enabled = false;
+}
 
 // Debug logging for production
 console.log('🔧 Backend Config:', {
