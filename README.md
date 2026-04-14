@@ -1,34 +1,49 @@
-## Backend (Railway alternative)
+## Backend (Railway + MongoDB Atlas)
 
-Railway can go down; this repo includes a ready-to-deploy **Render** setup for the MongoDB backend.
+The backend is in `backend/` and runs as an Express server on Railway.
 
-### Option A: Render + MongoDB Atlas (recommended)
+### 1) MongoDB Atlas setup
 
-- **Backend service**: Render (Docker deploy)
-- **Database**: MongoDB Atlas (free tier)
+- Create Atlas cluster
+- Create a database user
+- Allow network access (`0.0.0.0/0` for easiest setup)
+- Copy SRV URI
 
-#### 1) Create MongoDB Atlas DB
-- Create a cluster and get your connection string (SRV).
-- Put it in `MONGODB_URI`.
+### 2) Deploy backend to Railway
 
-#### 2) Deploy backend to Render
-- Connect this repo in Render
-- Render will detect `render.yaml` and create `caltrak-backend`
-- Set env vars in Render:
-  - `MONGODB_URI`: your Atlas connection string
-  - `ADMIN_KEY`: any secret string you choose
-  - `CORS_ORIGIN`: comma-separated origins (your frontend URL + local dev)
+- Create a new Railway project and connect this repo
+- `railway.json` is included and starts backend with:
+  - `cd backend && npm start`
 
-Your backend health endpoint will be:
+Set Railway environment variables:
+- `MONGODB_URI` (required)
+- `MONGODB_DB` (optional, default `caltrak`)
+- `ADMIN_KEY` (required)
+- `CORS_ORIGIN` (required, e.g. `https://your-frontend.vercel.app,http://localhost:5173`)
+
+Health endpoint:
 - `GET /health`
 
-#### 3) Point the frontend at the new backend
+### 3) Frontend (Vercel) setup
 
-Set `VITE_BACKEND_URL` in your frontend environment (Vercel/Netlify/etc).
+In Vercel frontend env variables:
+- `VITE_BACKEND_URL=https://<your-railway-service>.up.railway.app`
+- `VITE_ADMIN_KEY=<same-admin-key>` (only if you use admin views from frontend)
 
-Example:
-- `VITE_BACKEND_URL=https://<your-render-service>.onrender.com`
+### 4) Local development
 
-Notes:
-- In **dev**, if `VITE_BACKEND_URL` is not set, the app defaults to `http://localhost:3001`.
-- In **prod**, if `VITE_BACKEND_URL` is not set, backend calls are disabled (no hardcoded Railway URL).
+Backend:
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+Frontend:
+```bash
+npm install
+npm run dev
+```
+
+Set local frontend env:
+- `VITE_BACKEND_URL=http://localhost:3001`

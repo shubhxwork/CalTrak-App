@@ -98,7 +98,8 @@ export const DietMaker: React.FC<DietMakerProps> = ({ results, inputs, onClose }
                            food.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
                            (food.category === 'custom' && (food as CustomFood).brand?.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = selectedCategory === 'all' || food.category === selectedCategory;
-      const matchesMealType = selectedCategory === 'custom' || food.mealType.includes(selectedMeal);
+      const normalizedMeal = (selectedMeal === 'snacks' ? 'snack' : selectedMeal);
+      const matchesMealType = selectedCategory === 'custom' || food.mealType.includes(normalizedMeal);
       
       return matchesSearch && matchesCategory && matchesMealType;
     });

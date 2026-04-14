@@ -127,7 +127,7 @@ export class GoogleSheetsService {
       console.log('🚀 Making request with options:', {
         method: requestOptions.method,
         headers: requestOptions.headers,
-        bodyLength: requestOptions.body?.length,
+        bodyLength: typeof requestOptions.body === 'string' ? requestOptions.body.length : undefined,
         mode: requestOptions.mode
       });
 
@@ -230,6 +230,8 @@ declare global {
       updateConfig: (scriptUrl: string, enabled?: boolean) => void;
       testConnection: () => Promise<boolean>;
       getConfig: () => GoogleSheetsConfig;
+      getDebugInfo: () => any;
+      clearDebugInfo: () => void;
     };
   }
 }

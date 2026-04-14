@@ -4,10 +4,8 @@ function getDefaultBackendBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_BACKEND_URL;
   if (fromEnv && typeof fromEnv === 'string' && fromEnv.trim().length > 0) return fromEnv.trim();
 
-  // Dev convenience: if not configured, assume local backend.
+  // Local backend default for development.
   if (import.meta.env.DEV) return 'http://localhost:3001';
-
-  // Prod must be explicitly configured (no hardcoded host).
   return '';
 }
 
@@ -18,11 +16,6 @@ const BACKEND_CONFIG = {
   enabled: true,
   type: 'mongodb' // 'file' or 'mongodb'
 };
-
-// If production build has no configured backend URL, disable backend calls.
-if (import.meta.env.PROD && !BACKEND_CONFIG.baseUrl) {
-  BACKEND_CONFIG.enabled = false;
-}
 
 // Debug logging for production
 console.log('🔧 Backend Config:', {
@@ -41,8 +34,10 @@ if (import.meta.env.PROD && import.meta.env.VITE_ADMIN_KEY) {
 }
 
 export interface BackendSession {
-  id: string;
-  timestamp: number;
+  id?: string;
+  sessionId: string;
+  createdAt?: string;
+  timestamp?: number;
   inputs: UserInputs;
   results: CalculationResults;
   metadata: {
@@ -51,6 +46,9 @@ export interface BackendSession {
     referrer: string;
     country: string;
     timestamp: string;
+    city?: string;
+    device?: string;
+    browser?: string;
   };
 }
 
@@ -63,6 +61,7 @@ export interface BackendAnalytics {
   mostCommonCountry: string;
   genderDistribution: Record<string, number>;
   goalDistribution: Record<string, number>;
+  countryDistribution?: Record<string, number>;
   averageWeight: number;
   averageBodyFat: number;
   sessionsLast24h: number;
@@ -428,7 +427,7 @@ declare global {
     CalTrakBackend: {
       testConnection: () => Promise<boolean>;
       getAnalytics: () => Promise<BackendAnalytics | null>;
-      getAllSessions: () => Promise<BackendSession[]>;
+      getAllSessions: (page?: number, limit?: number) => Promise<{sessions: BackendSession[], pagination: any}>;
       exportCSV: () => Promise<void>;
       updateConfig: (baseUrl: string, adminKey?: string) => void;
       getConfig: () => any;
