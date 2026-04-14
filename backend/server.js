@@ -11,13 +11,10 @@ const MONGODB_DB = process.env.MONGODB_DB || 'caltrak';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
-if (!MONGODB_URI) {
-  console.error('Missing required env var: MONGODB_URI');
-  process.exit(1);
-}
-
-const mongoClient = new MongoClient(MONGODB_URI);
+const mongoClient = MONGODB_URI ? new MongoClient(MONGODB_URI) : null;
 let sessionsCollection;
+let dbConnected = false;
+let lastDbError = null;
 
 function parseCorsOrigin(value) {
   if (!value || value === '*') return '*';
@@ -37,6 +34,15 @@ function requireAdmin(req, res) {
     return false;
   }
   return true;
+}
+
+function ensureDb(res) {
+  if (sessionsCollection) return true;
+  return res.status(503).json({
+    error: 'Database unavailable',
+    message: 'MongoDB is not connected yet. Please retry in a few seconds.',
+    lastDbError,
+  });
 }
 
 function distribution(values) {
@@ -72,21 +78,22 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/health', async (_req, res) => {
-  try {
-    const totalSessions = await sessionsCollection.countDocuments();
-    res.json({
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      message: 'CalTrak Railway backend is running',
-      database: { status: 'Connected', totalSessions },
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'ERROR', error: error.message });
-  }
+  const totalSessions = sessionsCollection ? await sessionsCollection.countDocuments() : 0;
+  res.json({
+    status: dbConnected ? 'OK' : 'DEGRADED',
+    timestamp: new Date().toISOString(),
+    message: 'CalTrak Railway backend is running',
+    database: {
+      status: dbConnected ? 'Connected' : 'Disconnected',
+      totalSessions,
+      lastError: lastDbError,
+    },
+  });
 });
 
 app.post('/api/sessions', async (req, res) => {
   try {
+    if (!ensureDb(res)) return;
     const { inputs, results } = req.body || {};
     if (!inputs || !results) return res.status(400).json({ success: false, error: 'Missing required fields: inputs and results' });
     if (!inputs.name || !inputs.gender || inputs.weight == null || inputs.bodyFat == null) {
@@ -124,6 +131,7 @@ app.post('/api/sessions', async (req, res) => {
 });
 
 app.get('/api/sessions', async (req, res) => {
+  if (!ensureDb(res)) return;
   if (!requireAdmin(req, res)) return;
   const page = Number(req.query.page || 1);
   const limit = Math.min(Number(req.query.limit || 50), 200);
@@ -137,6 +145,7 @@ app.get('/api/sessions', async (req, res) => {
 });
 
 app.get('/api/analytics', async (req, res) => {
+  if (!ensureDb(res)) return;
   if (!requireAdmin(req, res)) return;
   const sessions = await sessionsCollection.find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
   if (!sessions.length) return res.json({ message: 'No data available' });
@@ -166,6 +175,7 @@ app.get('/api/analytics', async (req, res) => {
 });
 
 app.post('/api/sessions/:sessionId/feedback', async (req, res) => {
+  if (!ensureDb(res)) return;
   const { sessionId } = req.params;
   const { rating, recommendation } = req.body || {};
   if (typeof rating !== 'number' || rating < 1 || rating > 5) return res.status(400).json({ success: false, error: 'Rating must be a number between 1 and 5' });
@@ -180,6 +190,7 @@ app.post('/api/sessions/:sessionId/feedback', async (req, res) => {
 });
 
 app.get('/api/feedback', async (req, res) => {
+  if (!ensureDb(res)) return;
   if (!requireAdmin(req, res)) return;
   const page = Number(req.query.page || 1);
   const limit = Math.min(Number(req.query.limit || 50), 200);
@@ -198,6 +209,7 @@ app.get('/api/feedback', async (req, res) => {
 });
 
 app.get('/api/export/csv', async (req, res) => {
+  if (!ensureDb(res)) return;
   if (!requireAdmin(req, res)) return;
   const sessions = await sessionsCollection.find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).toArray();
   const headers = ['Timestamp', 'Session ID', 'Name', 'Age', 'Gender', 'Weight', 'Height', 'Body Fat %', 'Unit System', 'Activity Level', 'Goal', 'Target Weight', 'Weekly Rate', 'Calories', 'Protein (g)', 'Protein %', 'Carbs (g)', 'Carbs %', 'Fat (g)', 'Fat %', 'Fiber (g)', 'Water (L)', 'LBM', 'BMR', 'TDEE', 'Formula Used', 'Expected Change', 'Safety Level', 'Months to Target', 'Milestone Count', 'IP Address', 'Country', 'City', 'Device', 'Browser', 'User Agent'];
@@ -210,6 +222,7 @@ app.get('/api/export/csv', async (req, res) => {
 });
 
 app.delete('/api/sessions/delete', async (req, res) => {
+  if (!ensureDb(res)) return;
   if (!requireAdmin(req, res)) return;
   const { sessionIds } = req.body || {};
   if (!Array.isArray(sessionIds) || !sessionIds.length) return res.status(400).json({ error: 'sessionIds array is required' });
@@ -218,6 +231,7 @@ app.delete('/api/sessions/delete', async (req, res) => {
 });
 
 app.delete('/api/sessions/delete-all', async (req, res) => {
+  if (!ensureDb(res)) return;
   if (!requireAdmin(req, res)) return;
   const result = await sessionsCollection.deleteMany({});
   return res.json({ success: true, deletedCount: result.deletedCount });
@@ -225,13 +239,35 @@ app.delete('/api/sessions/delete-all', async (req, res) => {
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
+async function connectMongoWithRetry(delayMs = 3000) {
+  if (!mongoClient) {
+    lastDbError = 'Missing MONGODB_URI';
+    console.error('Missing required env var: MONGODB_URI');
+    return;
+  }
+
+  try {
+    await mongoClient.connect();
+    const db = mongoClient.db(MONGODB_DB);
+    sessionsCollection = db.collection('sessions');
+    await sessionsCollection.createIndex({ createdAt: -1 });
+    await sessionsCollection.createIndex({ sessionId: 1 }, { unique: true });
+    dbConnected = true;
+    lastDbError = null;
+    console.log('MongoDB connected');
+  } catch (error) {
+    dbConnected = false;
+    lastDbError = error.message || String(error);
+    console.error('MongoDB connection failed, retrying...', lastDbError);
+    setTimeout(() => {
+      connectMongoWithRetry(Math.min(delayMs * 2, 30000));
+    }, delayMs);
+  }
+}
+
 async function startServer() {
-  await mongoClient.connect();
-  const db = mongoClient.db(MONGODB_DB);
-  sessionsCollection = db.collection('sessions');
-  await sessionsCollection.createIndex({ createdAt: -1 });
-  await sessionsCollection.createIndex({ sessionId: 1 }, { unique: true });
   app.listen(PORT, () => console.log(`CalTrak backend running on port ${PORT}`));
+  connectMongoWithRetry();
 }
 
 startServer().catch((error) => {
