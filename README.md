@@ -1,113 +1,137 @@
-# 🚀 CalTrak-App
+# 🚀 CalTrak — High-Performance Nutrition Engine
 
-> A modular nutrition planning application built using layered architecture, OOP, and SOLID principles.
+> A scalable, modular nutrition planning system built with Clean Architecture, SOLID principles, and OOP.
 
 ---
 
-## 🧠 Overview
+## 🧠 Why This Project Exists
 
-CalTrak-App is not just another calorie calculator — it’s a well-architected system that separates concerns across layers, making it easy to scale, test, and extend.
+Most calorie tracking apps are feature-heavy but poorly structured.
 
-### The project demonstrates:
+CalTrak focuses on:
+- Architecture-first design  
+- Separation of concerns  
+- Scalability and maintainability  
 
-- Clean Architecture principles  
-- Object-Oriented Design  
-- Dependency Inversion & Abstraction  
-- Real-world frontend state management  
+This is a **system design project disguised as a nutrition app**.
+
+---
+
+## ✨ What Makes It Different
+
+- 🔥 Layered architecture (not messy React code)
+- 🧠 Strong domain modeling (Macro, NutritionPlan, UserProfile)
+- 🔌 Swappable data sources (LocalStorage, MongoDB, Google Sheets)
+- ⚙️ Dependency inversion applied correctly
+- 🚫 No prop drilling (Zustand)
 
 ---
 
 ## 🏗️ Architecture
 
-The application follows a layered architecture:
-
-- **UI (React Components)**  
-- **Controllers (Business Logic)**  
-- **Services (Interfaces & Implementations)**  
-- **Data Layer (LocalStorage / Remote APIs)**  
+- **UI Layer** → React components (presentation only)  
+- **Controllers** → Business logic  
+- **Services** → Interfaces + implementations  
+- **Data Layer** → Storage systems  
 
 ---
 
-## 🧩 Core Concepts
+## 📊 Diagrams
 
-### 🔹 Models (OOP + Encapsulation)
+### ER Diagram
+<p align="center">
+  <img src="assets/diagrams/ER-Diagram.png" width="700"/>
+</p>
 
-- **Macro**
-  - Handles calorie calculations  
-  - Percentage distribution  
-  - `rebalanceTo()` for dynamic adjustments  
+### Sequence Diagram
+<p align="center">
+  <img src="assets/diagrams/Sequence-Diagram.png" width="700"/>
+</p>
 
-- **UserProfile**
-  - Normalizes user data (kg, cm, lbm)  
-  - Acts as a core domain entity  
-
-- **NutritionPlan**
-  - Aggregate root  
-  - `toLegacyResults()` for backward compatibility  
-
----
-
-### 🔹 Controllers (Business Logic Layer)
-
-- **NutritionController**
-  - Refactored `calculateResults()` into:
-    - `calcBMR()`  
-    - `calcTDEE()`  
-    - `calcMacros()`  
-    - `buildMilestones()`  
-    - `buildTimeline()`  
-
-- **SessionController**
-  - Manages session persistence  
-  - Coordinates local + remote storage  
+### Use Case Diagram
+<p align="center">
+  <img src="assets/diagrams/UseCase-Diagram.png" width="700"/>
+</p>
 
 ---
 
-### 🔹 Services (Dependency Inversion)
+## 🧩 Core Architecture
 
-- **Interfaces**
-  - `ISessionRepository`  
-  - `IRemoteSessionService`  
+### 🔹 Domain Models
 
-- **Implementations**
-  - `LocalSessionRepository` → localStorage  
-  - `MongoRemoteService` → MongoDB  
-  - `SheetsRemoteService` → Google Sheets  
+#### Macro
+- Handles calorie calculations  
+- Maintains macro ratios  
+- `rebalanceTo()` for adjustments  
+
+#### UserProfile
+- Normalizes user data  
+- Core domain entity  
+
+#### NutritionPlan
+- Aggregate root  
+- Converts to legacy format  
 
 ---
 
-### 🔹 Store (Global State)
+### 🔹 Controllers
 
-- Built using Zustand  
-- Replaces multiple `useState` calls  
+#### NutritionController
+- `calcBMR()`  
+- `calcTDEE()`  
+- `calcMacros()`  
+- `buildMilestones()`  
+- `buildTimeline()`  
+
+#### SessionController
+- Manages sessions  
+- Syncs local + remote data  
+
+---
+
+### 🔹 Services
+
+**Interfaces**
+- `ISessionRepository`  
+- `IRemoteSessionService`  
+
+**Implementations**
+- `LocalSessionRepository` → localStorage  
+- `MongoRemoteService` → MongoDB  
+- `SheetsRemoteService` → Google Sheets  
+
+---
+
+### 🔹 Global State (Zustand)
+
 - Eliminates prop drilling  
-- Uses Singleton pattern  
+- Minimal boilerplate  
+- Acts as a central store  
 
 ---
 
-### 🔹 Hooks (Reusable Logic)
+### 🔹 Custom Hooks
 
-- `useCalculation` → calculate → save → navigate  
-- `useAdminAccess` → authentication-based access  
-- `useKeyboardShortcuts` → global shortcut handling  
+- `useCalculation` → calculate + save + navigate  
+- `useAdminAccess` → authentication control  
+- `useKeyboardShortcuts` → UX shortcuts  
 
 ---
 
 ### 🔹 Bootstrap (Composition Root)
 
-- Central place for dependency wiring  
+- Central dependency injection  
 - Uses Factory Pattern  
-- Easily swap implementations without changing core logic  
+- Easily swap implementations  
 
 ---
 
-## ✨ Key Features
+## ⚙️ Features
 
-- Advanced nutrition calculation (BMR, TDEE, macros)  
-- Clean layered architecture  
-- Pluggable storage system  
-- Optimized global state management  
-- Modular and scalable design  
+- 📈 BMR, TDEE, macro calculations  
+- 🔄 Pluggable backend system  
+- ⚡ Optimized global state  
+- 🧩 Modular architecture  
 
 ---
 
@@ -115,68 +139,17 @@ The application follows a layered architecture:
 
 - React + TypeScript  
 - Zustand  
-- SOLID + OOP Architecture  
-- LocalStorage + Remote APIs  
+- Express (Backend)  
+- MongoDB Atlas  
+- Railway  
+- Vercel  
 
 ---
 
-## 📉 Refactoring Highlights
+## 📉 Refactoring Impact
 
 - Reduced `App.tsx` from 200+ lines → ~60 lines  
 - Eliminated prop drilling  
-- Modularized business logic  
-- Extracted reusable hooks and utilities  
+- Extracted reusable logic  
+- Clean separation of concerns  
 
----
-
----
-
-## Backend (Railway + MongoDB Atlas)
-
-The backend is in `backend/` and runs as an Express server on Railway.
-
-### 1) MongoDB Atlas setup
-
-- Create Atlas cluster
-- Create a database user
-- Allow network access (`0.0.0.0/0` for easiest setup)
-- Copy SRV URI
-
-### 2) Deploy backend to Railway
-
-- Create a new Railway project and connect this repo
-- `railway.json` is included and starts backend with:
-  - `cd backend && npm start`
-
-Set Railway environment variables:
-- `MONGODB_URI` (required)
-- `MONGODB_DB` (optional, default `caltrak`)
-- `ADMIN_KEY` (required)
-- `CORS_ORIGIN` (required, e.g. `https://your-frontend.vercel.app,http://localhost:5173`)
-
-Health endpoint:
-- `GET /health`
-
-### 3) Frontend (Vercel) setup
-
-In Vercel frontend env variables:
-- `VITE_BACKEND_URL=https://<your-railway-service>.up.railway.app`
-- `VITE_ADMIN_KEY=<same-admin-key>` (only if you use admin views from frontend)
-
-### 4) Local development
-
-Backend:
-```bash
-cd backend
-npm install
-npm run dev
-```
-
-Frontend:
-```bash
-npm install
-npm run dev
-```
-
-Set local frontend env:
-- `VITE_BACKEND_URL=http://localhost:3001`
