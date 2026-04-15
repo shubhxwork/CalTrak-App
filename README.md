@@ -45,7 +45,7 @@ This is a **system design project disguised as a nutrition app**.
 
 ### Sequence Diagram
 <p align="center">
-  <img src="assets/diagrams/Sequence Diagram.png" width="700"/>
+  <img src="assets/diagrams/Sequence Diagram .png" width="700"/>
 </p>
 
 ### Use Case Diagram
