@@ -40,17 +40,17 @@ This is a **system design project disguised as a nutrition app**.
 
 ### ER Diagram
 <p align="center">
-  <img src="assets/diagrams/ER-Diagram.png" width="700"/>
+  <img src="assets/diagrams/ER Diagram.png" width="700"/>
 </p>
 
 ### Sequence Diagram
 <p align="center">
-  <img src="assets/diagrams/Sequence-Diagram.png" width="700"/>
+  <img src="assets/diagrams/Sequence Diagram.png" width="700"/>
 </p>
 
 ### Use Case Diagram
 <p align="center">
-  <img src="assets/diagrams/UseCase-Diagram.png" width="700"/>
+  <img src="assets/diagrams/UseCase Diagram.png" width="700"/>
 </p>
 
 ---
